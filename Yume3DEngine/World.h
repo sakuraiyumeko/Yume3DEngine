@@ -68,15 +68,21 @@ public:
             }
         }
 
-        if (!meshQueue.empty()) {
-            ChunkPos posToUpdate = meshQueue.back(); // 抓出队列末尾的幸运儿
+        //梦子看这里！真·黄金控速多并发分帧大阵！
+// 扔掉以前那个死板的单个 if 判定！我们换成一个轻量的小 while 循环！
+// 规定在垂直同步锁死 60 帧/144 帧的这一帧里，允许 CPU 在后台【一口气消纳掉最多 4 个】区块的贪婪合并！
+// 4 个区块的贪婪合并对于主线程来说轻松得像吃布丁一样，同时网格拼装速度直接原地狂飙了整整 4 倍！
+        int updatesThisFrame = 0;
+        while (!meshQueue.empty() && updatesThisFrame < 4) {
+            ChunkPos posToUpdate = meshQueue.back();
             meshQueue.pop_back();
 
-            // 只有当它还没被卸载时，才在这一帧里单独为它呼唤一次高贵的 Lambda 闭包熔炼！
             if (chunks.count(posToUpdate) > 0) {
-                UpdateChunkMesh(posToUpdate);
+                UpdateChunkMesh(posToUpdate); // 熔炼网格
+                updatesThisFrame++;           // 计数器累加，哼唧！
             }
         }
+
 
         // 3. 阶段二：冷酷抹杀被你甩在身后的陈旧世界（防爆内存！） 
         // 我们用一个高贵的清理名单，把所有跑得太远的区块统统抓起来送去地狱释放

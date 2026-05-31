@@ -97,6 +97,10 @@ public:
 private:
     void update(float dt) {
 
+        if (dt > 0.03f) {
+            dt = 0.03f;
+        }
+
         GLFWwindow* handle = gameWindow->Handle;
 
         if (Input::IsKeyPressed(handle, GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(handle, true);
@@ -183,7 +187,7 @@ private:
         processPhysics(dt);
         processInteraction(handle);
 
-        glm::vec2 mouseOffset = Input::GetMouseOffset();
+        glm::vec2 mouseOffset = Input::GetMouseOffset(handle);
         camera->ProcessMouseMovement(mouseOffset.x, mouseOffset.y);
 
         if (Input::IsKeyJustPressed(handle, GLFW_KEY_1)) { currentSelectBlock = BlockType::GRASS; }

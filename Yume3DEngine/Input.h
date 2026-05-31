@@ -73,14 +73,30 @@ public:
     }
 
     // 【核心大招五：对外派发鼠标运动偏移量的接口】
-    static glm::vec2 GetMouseOffset() {
-        glm::vec2 result(XOffset*2, YOffset*2);
+    static glm::vec2 GetMouseOffset(GLFWwindow* handle) {
+        double xpos, ypos;
+        // 1. 直接读取系统捕获到的、无边界的虚拟高精度绝对位置
+        glfwGetCursorPos(handle, &xpos, &ypos);
 
-        // 刷新鼠标每帧的相对偏移量，等被拿走后就自动清零，超级干净！
-        XOffset = 0.0f;
-        YOffset = 0.0f;
+        //  梦子专属：第一次开局时防止视角在起点产生超频大跳跃的结界
+        static bool firstMouse = true;
+        static double lastX = xpos;
+        static double lastY = ypos;
 
-        return result;
+        if (firstMouse) {
+            lastX = xpos; lastY = ypos;
+            firstMouse = false;
+        }
+
+        // 2. 纯净算差值，完全没有手动居中的反向内耗！
+        float xoffset = static_cast<float>(xpos - lastX);
+        float yoffset = static_cast<float>(lastY - ypos); // 注意：Y轴在屏幕上和 3D 里相反，所以用 last - current 噢！
+
+        lastX = xpos;
+        lastY = ypos;
+
+        // 3. 乘上你写在 Camera 里的顺滑灵敏度系数，高高兴兴回传！
+        return glm::vec2(xoffset, yoffset);
     }
 };
 

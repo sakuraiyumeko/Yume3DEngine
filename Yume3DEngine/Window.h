@@ -38,6 +38,7 @@ public:
             exit(-1);
         }
         glfwMakeContextCurrent(Handle);
+        glfwSwapInterval(1);
 
         // 3. 强行囚禁鼠标！第一人称必须死死锁死
         glfwSetInputMode(Handle, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
