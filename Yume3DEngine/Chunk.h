@@ -63,9 +63,6 @@ public:
 
     // --- 终极魔法：带全局跨界检测的 AO 指纹计算 ---
     glm::vec4 CalculateSingleGridAO(int gx, int gy, int gz, int face, int chunkX, int chunkZ, const std::function<BlockType(int, int, int)>& getGlobalBlock) const {
-        if (face != 5) return glm::vec4(1.0f); // 侧面暂时全亮，梦子可以以后补全哦
-
-        // 算出在宏观宇宙里的绝对坐标，跨区块阴影完美融合！
         int worldX = chunkX * 16 + gx;
         int worldY = gy;
         int worldZ = chunkZ * 16 + gz;
@@ -74,13 +71,41 @@ public:
             return (getGlobalBlock(worldX + dx, worldY + dy, worldZ + dz) != BlockType::AIR) ? 1 : 0;
             };
 
-        // 顺序：左下(0,0), 右下(1,0), 右上(1,1), 左上(0,1)
-        float c0 = 1.0f - (check(-1, 1, 0) + check(0, 1, -1) + check(-1, 1, -1)) * 0.2f;
-        float c1 = 1.0f - (check(1, 1, 0) + check(0, 1, -1) + check(1, 1, -1)) * 0.2f;
-        float c2 = 1.0f - (check(1, 1, 0) + check(0, 1, 1) + check(1, 1, 1)) * 0.2f;
-        float c3 = 1.0f - (check(-1, 1, 0) + check(0, 1, 1) + check(-1, 1, 1)) * 0.2f;
+        glm::ivec3 n = { 0, 0, 0 }; // 外侧法线方向
+        glm::ivec3 u = { 0, 0, 0 }; // 局部水平 U 轴（必须严格对齐 shader.vs 里的 sx 拉伸轴！）
+        glm::ivec3 v = { 0, 0, 0 }; // 局部纵向 V 轴（必须严格对齐 shader.vs 里的 sy 拉伸轴！）
 
-        return glm::clamp(glm::vec4(c0, c1, c2, c3), 0.4f, 1.0f);
+        //  梦子看这里！真·六面空间正交手势绝对对齐名册！ 
+        // 严格根据你在 shader.vs 里写的 localPos 镜像（1.0-u）与轴对调进行纯数学映射！
+        if (face == 0) { n = { 0, 0, -1 }; u = { 1, 0, 0 };  v = { 0, 1, 0 }; } // 后：u=X, v=Y
+        if (face == 1) { n = { 0, 0, 1 };  u = { -1, 0, 0 }; v = { 0, 1, 0 }; } // 前：u=(1.0-X), v=Y
+        if (face == 2) { n = { -1, 0, 0 }; u = { 0, 0, -1 }; v = { 0, 1, 0 }; } // 左：u=(1.0-Z), v=Y 修正：v 才是高度 Y 轴！u 才是 Z 轴！
+        if (face == 3) { n = { 1, 0, 0 };  u = { 0, 0, 1 };  v = { 0, 1, 0 }; } // 右：u=Z, v=Y        修正：v 才是高度 Y 轴！u 局限于 Z！
+        if (face == 4) { n = { 0, -1, 0 }; u = { 1, 0, 0 };  v = { 0, 0, -1 }; } // 下：u=X, v=-Z
+        if (face == 5) { n = { 0, 1, 0 };  u = { 1, 0, 0 };  v = { 0, 0, 1 }; } // 上：u=X, v=Z
+
+        // 2. 万能四角邻居数格子闭包
+        auto check_corner = [&](int du, int dv) -> int {
+            int side1 = check(n.x + du * u.x, n.y + du * u.y, n.z + du * u.z);
+            int side2 = check(n.x + dv * v.x, n.y + dv * v.y, n.z + dv * v.z);
+            int corner = check(n.x + du * u.x + dv * v.x, n.y + du * u.y + dv * v.y, n.z + du * u.z + dv * v.z);
+
+            return (side1 && side2) ? 3 : (side1 + side2 + corner);
+            };
+
+        // 3. 严格对齐你在着色器里的角点定义分发：0=左下(-1,-1), 1=右下(1,-1), 2=右上(1,1), 3=左上(-1,1)
+        float c0 = 1.0f - float(check_corner(-1, -1)) * 0.18f;
+        float c1 = 1.0f - float(check_corner(1, -1)) * 0.18f;
+        float c2 = 1.0f - float(check_corner(1, 1)) * 0.18f;
+        float c3 = 1.0f - float(check_corner(-1, 1)) * 0.18f;
+
+        glm::vec4 finalAO = glm::vec4(c0, c1, c2, c3);
+        for (int a = 0; a < 4; a++) {
+            if (finalAO[a] < 0.45f) finalAO[a] = 0.45f;
+            if (finalAO[a] > 1.0f)  finalAO[a] = 1.0f;
+        }
+
+        return finalAO;
     }
 
     void GenerateMesh(int chunkX, int chunkZ, const std::function<BlockType(int, int, int)>& getGlobalBlock) {
