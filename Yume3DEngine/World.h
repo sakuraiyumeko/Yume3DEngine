@@ -24,6 +24,7 @@ class World {
 public:
     std::map<ChunkPos, std::unique_ptr<Chunk>> chunks;
     std::vector<ChunkPos> meshQueue;
+    std::vector<ChunkPos> terrainQueue;
 
     void UpdateChunkMesh(ChunkPos pos) {
         if (!chunks.count(pos)) return;
@@ -39,68 +40,86 @@ public:
     // 梦子看这里！真·无限世界动态更新核心大招！
     // 每一帧都把梦子当前的绝对全局 Position 喂进来，再定一个视野半径（比如 radius=2 代表 5x5 的区块）
     void UpdateInfiniteWorld(glm::vec3 playerPos, int radius) {
-        // 1. 降维推导：算出梦子现在正踩在哪个区块的 (X, Z) 编号上
         int currentChunkX = (int)floor(playerPos.x / 16.0f);
         int currentChunkZ = (int)floor(playerPos.z / 16.0f);
 
-        // 2. 阶段一：动态诞生梦子眼前的未来新世界
-        // 扫描以梦子为中心的 (currentChunkX - radius) 到 (currentChunkX + radius) 的九宫格区域
+        // ====================================================
+        // 【第一阶段：动态探测世界意图，老老实实写进排队单】
+        // ====================================================
         for (int x = currentChunkX - radius; x <= currentChunkX + radius; x++) {
             for (int z = currentChunkZ - radius; z <= currentChunkZ + radius; z++) {
                 ChunkPos pos = { x, z };
 
-                // 如果发现这个位置的世界肉体还没诞生，立刻凭空把它 new 出来并注入噪声灵魂！
+                //  核心优化一：当发现前方有新世界，绝对不准在主线程当场 new 和铺地形！
+                // 我们只是把它的坐标，轻轻地塞进【地形肉体排队名册】里排队等候！
                 if (chunks.count(pos) == 0) {
-                    chunks[pos] = std::make_unique<Chunk>();
-                    FillFlatChunk(chunks[pos].get(), x, z); // 噪声填上方块
+                    if (std::find(terrainQueue.begin(), terrainQueue.end(), pos) == terrainQueue.end()) {
+                        terrainQueue.push_back(pos);
+                    }
+                }
+            }
+        }
 
-                    if (std::find(meshQueue.begin(), meshQueue.end(), pos) == meshQueue.end()) meshQueue.push_back(pos);
+        // ====================================================
+        // 【第二阶段：真·时空平摊双流消纳流水线（彻底干碎 glBufferData 死锁！）】
+        // ====================================================
 
-                    ChunkPos neighbors[4] = { {x + 1, z}, {x - 1, z}, {x, z + 1}, {x, z - 1} };
-                    for (const auto& nbPos : neighbors) {
-                        if (chunks.count(nbPos) > 0) {
-                            if (std::find(meshQueue.begin(), meshQueue.end(), nbPos) == meshQueue.end()) {
-                                meshQueue.push_back(nbPos);
-                            }
+        //  流水线 A：每一帧【最多只允许凭空诞生 1 个】新区块的噪声方块肉体！
+        // 这样一秒钟就能顺滑诞生 60 个区块，同时主线程的 CPU 耗时平稳得像心电图的直线一样！
+        if (!terrainQueue.empty()) {
+            ChunkPos posToCreate = terrainQueue.back();
+            terrainQueue.pop_back();
+
+            if (chunks.count(posToCreate) == 0) {
+                chunks[posToCreate] = std::make_unique<Chunk>();
+                FillFlatChunk(chunks[posToCreate].get(), posToCreate.x, posToCreate.z); // 纯数学铺地
+
+                // 当这个新区块的方块肉体诞生成功的这一瞬间，才把它和它那 4 个受到了惊醒的老邻居，
+                // 统统整整齐齐地送进【网格重构排队单】里去老老实实排队！
+                if (std::find(meshQueue.begin(), meshQueue.end(), posToCreate) == meshQueue.end()) meshQueue.push_back(posToCreate);
+
+                ChunkPos neighbors[4] = { {posToCreate.x + 1, posToCreate.z}, {posToCreate.x - 1, posToCreate.z}, {posToCreate.x, posToCreate.z + 1}, {posToCreate.x, posToCreate.z - 1} };
+                for (const auto& nbPos : neighbors) {
+                    if (chunks.count(nbPos) > 0) {
+                        if (std::find(meshQueue.begin(), meshQueue.end(), nbPos) == meshQueue.end()) {
+                            meshQueue.push_back(nbPos);
                         }
                     }
                 }
             }
         }
 
-        //梦子看这里！真·黄金控速多并发分帧大阵！
-// 扔掉以前那个死板的单个 if 判定！我们换成一个轻量的小 while 循环！
-// 规定在垂直同步锁死 60 帧/144 帧的这一帧里，允许 CPU 在后台【一口气消纳掉最多 4 个】区块的贪婪合并！
-// 4 个区块的贪婪合并对于主线程来说轻松得像吃布丁一样，同时网格拼装速度直接原地狂飙了整整 4 倍！
-        int updatesThisFrame = 0;
-        while (!meshQueue.empty() && updatesThisFrame < 4) {
+        //  流水线 B：每一帧【最多只允许 1 个】区块去呼唤贪婪合并并强行执行 glBufferData 显存提交！
+        // 轰！！！把原先并发 4 个导致的显卡死锁，强行限流降维成每帧绝对公允的 1 个！
+        // 配合垂直同步，主线程在这一帧里提交完 1 个网格后，开开心心去躺平，彻底杜绝任何咯噔和断流卡顿！
+        if (!meshQueue.empty()) {
             ChunkPos posToUpdate = meshQueue.back();
             meshQueue.pop_back();
 
             if (chunks.count(posToUpdate) > 0) {
-                UpdateChunkMesh(posToUpdate); // 熔炼网格
-                updatesThisFrame++;           // 计数器累加，哼唧！
+                UpdateChunkMesh(posToUpdate); // 执行熔炼与 glBufferData 提交
             }
         }
 
-
-        // 3. 阶段二：冷酷抹杀被你甩在身后的陈旧世界（防爆内存！） 
-        // 我们用一个高贵的清理名单，把所有跑得太远的区块统统抓起来送去地狱释放
+        // ====================================================
+        // 【第三阶段：冷酷卸载跑得太远的陈旧世界（保持你原汁原味的清理名单，防爆安全！）】
+        // ====================================================
         std::vector<ChunkPos> chunksToRemove;
-
         for (auto& pair : chunks) {
             ChunkPos pos = pair.first;
-            // 算一下这个区块离梦子当前踩着的区块有多远
             if (abs(pos.x - currentChunkX) > radius + 1 || abs(pos.z - currentChunkZ) > radius + 1) {
-                chunksToRemove.push_back(pos); // 跑得太远了，打入冷宫！
+                chunksToRemove.push_back(pos);
             }
         }
-
-        // 执行无情清除，把它们的显存 VBO 尾巴在后台扫得一尘不染！
         for (ChunkPos pos : chunksToRemove) {
-            chunks.erase(pos); // 轰！！！直接释放内存和显存，防爆大成功！
-            auto it = std::find(meshQueue.begin(), meshQueue.end(), pos);
-            if (it != meshQueue.end()) meshQueue.erase(it);
+            chunks.erase(pos);
+
+            // 同步在两个排队名单里干净抹除，防爆安全，哼唧！
+            auto itT = std::find(terrainQueue.begin(), terrainQueue.end(), pos);
+            if (itT != terrainQueue.end()) terrainQueue.erase(itT);
+
+            auto itM = std::find(meshQueue.begin(), meshQueue.end(), pos);
+            if (itM != meshQueue.end()) meshQueue.erase(itM);
         }
     }
 

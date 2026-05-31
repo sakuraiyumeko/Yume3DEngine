@@ -63,43 +63,69 @@ public:
 
     // --- 终极魔法：带全局跨界检测的 AO 指纹计算 ---
     glm::vec4 CalculateSingleGridAO(int gx, int gy, int gz, int face, int chunkX, int chunkZ, const std::function<BlockType(int, int, int)>& getGlobalBlock) const {
+        // 1. 算出在宏观宇宙里的绝对绝对方块坐标，跨区块阴影完美相融！
         int worldX = chunkX * 16 + gx;
         int worldY = gy;
         int worldZ = chunkZ * 16 + gz;
 
+        //  核心优化一：我们只保留这单单一个最纯粹、绝对没有二级套娃的最底层世界查询闭包！
         auto check = [&](int dx, int dy, int dz) -> int {
             return (getGlobalBlock(worldX + dx, worldY + dy, worldZ + dz) != BlockType::AIR) ? 1 : 0;
             };
 
-        glm::ivec3 n = { 0, 0, 0 }; // 外侧法线方向
-        glm::ivec3 u = { 0, 0, 0 }; // 局部水平 U 轴（必须严格对齐 shader.vs 里的 sx 拉伸轴！）
-        glm::ivec3 v = { 0, 0, 0 }; // 局部纵向 V 轴（必须严格对齐 shader.vs 里的 sy 拉伸轴！）
+        //  核心优化二：真·全主轴 6 面 24 方向常数位移全量大展开！ 
+        // 我们不在最里面用向量乘法打架了！在进门的一瞬间，直接根据 face 把 4 个端点各自周围贴着的 3 个邻居相对绝对位移在内存里排好队！
+        // 顺序雷打不动严格对齐：c0(左下), c1(右下), c2(右上), c3(左上) 
+        int s0_1, s0_2, c0_n; // 角0的三个方向 (side1, side2, corner)
+        int s1_1, s1_2, c1_n; // 角1的三个方向
+        int s2_1, s2_2, c2_n; // 角2的三个方向
+        int s3_1, s3_2, c3_n; // 角3的三个方向
 
-        //  梦子看这里！真·六面空间正交手势绝对对齐名册！ 
-        // 严格根据你在 shader.vs 里写的 localPos 镜像（1.0-u）与轴对调进行纯数学映射！
-        if (face == 0) { n = { 0, 0, -1 }; u = { 1, 0, 0 };  v = { 0, 1, 0 }; } // 后：u=X, v=Y
-        if (face == 1) { n = { 0, 0, 1 };  u = { -1, 0, 0 }; v = { 0, 1, 0 }; } // 前：u=(1.0-X), v=Y
-        if (face == 2) { n = { -1, 0, 0 }; u = { 0, 0, -1 }; v = { 0, 1, 0 }; } // 左：u=(1.0-Z), v=Y 修正：v 才是高度 Y 轴！u 才是 Z 轴！
-        if (face == 3) { n = { 1, 0, 0 };  u = { 0, 0, 1 };  v = { 0, 1, 0 }; } // 右：u=Z, v=Y        修正：v 才是高度 Y 轴！u 局限于 Z！
-        if (face == 4) { n = { 0, -1, 0 }; u = { 1, 0, 0 };  v = { 0, 0, -1 }; } // 下：u=X, v=-Z
-        if (face == 5) { n = { 0, 1, 0 };  u = { 1, 0, 0 };  v = { 0, 0, 1 }; } // 上：u=X, v=Z
+        if (face == 0) { // 后面：看向 -Z。外侧是 z-1。局部 u=X, v=Y
+            s0_1 = check(-1, 0, -1); s0_2 = check(0, -1, -1); c0_n = check(-1, -1, -1);
+            s1_1 = check(1, 0, -1);  s1_2 = check(0, -1, -1); c1_n = check(1, -1, -1);
+            s2_1 = check(1, 0, -1);  s2_2 = check(0, 1, -1);  c2_n = check(1, 1, -1);
+            s3_1 = check(-1, 0, -1); s3_2 = check(0, 1, -1);  c3_n = check(-1, 1, -1);
+        }
+        else if (face == 1) { // 前面：看向 +Z。外侧是 z+1。局部 u=-X, v=Y
+            s0_1 = check(1, 0, 1);  s0_2 = check(0, -1, 1); c0_n = check(1, -1, 1);
+            s1_1 = check(-1, 0, 1); s1_2 = check(0, -1, 1); c1_n = check(-1, -1, 1);
+            s2_1 = check(-1, 0, 1); s2_2 = check(0, 1, 1);  c2_n = check(-1, 1, 1);
+            s3_1 = check(1, 0, 1);  s3_2 = check(0, 1, 1);  c3_n = check(1, 1, 1);
+        }
+        else if (face == 2) { // 左面：看向 -X。外侧是 x-1。局部 u=-Z, v=Y
+            s0_1 = check(-1, 0, 1);  s0_2 = check(-1, -1, 0); c0_n = check(-1, -1, 1);
+            s1_1 = check(-1, 0, -1); s1_2 = check(-1, -1, 0); c1_n = check(-1, -1, -1);
+            s2_1 = check(-1, 0, -1); s2_2 = check(-1, 1, 0);  c2_n = check(-1, 1, -1);
+            s3_1 = check(-1, 0, 1);  s3_2 = check(-1, 1, 0);  c3_n = check(-1, 1, 1);
+        }
+        else if (face == 3) { // 右面：看向 +X。外侧是 x+1。局部 u=Z, v=Y
+            s0_1 = check(1, 0, -1); s0_2 = check(1, -1, 0); c0_n = check(1, -1, -1);
+            s1_1 = check(1, 0, 1);  s1_2 = check(1, -1, 0); c1_n = check(1, -1, 1);
+            s2_1 = check(1, 0, 1);  s2_2 = check(1, 1, 0);  c2_n = check(1, 1, 1);
+            s3_1 = check(1, 0, -1); s3_2 = check(1, 1, 0);  c3_n = check(1, 1, -1);
+        }
+        else if (face == 4) { // 底面：看向 -Y。外侧是 y-1。局部 u=X, v=-Z
+            s0_1 = check(-1, -1, 0); s0_2 = check(0, -1, 1); c0_n = check(-1, -1, 1);
+            s1_1 = check(1, -1, 0);  s1_2 = check(0, -1, 1); c1_n = check(1, -1, 1);
+            s2_1 = check(1, -1, 0);  s2_2 = check(0, -1, -1); c2_n = check(1, -1, -1);
+            s3_1 = check(-1, -1, 0); s3_2 = check(0, -1, -1); c3_n = check(-1, -1, -1);
+        }
+        else { // 顶面：看向 +Y。外侧是 y+1。局部 u=X, v=Z (完美对齐你原本最自豪的初版公式！)
+            s0_1 = check(-1, 1, 0); s0_2 = check(0, 1, -1); c0_n = check(-1, 1, -1);
+            s1_1 = check(1, 1, 0);  s1_2 = check(0, 1, -1); c1_n = check(1, 1, -1);
+            s2_1 = check(1, 1, 0);  s2_2 = check(0, 1, 1);  c2_n = check(1, 1, 1);
+            s3_1 = check(-1, 1, 0); s3_2 = check(0, 1, 1);  c3_n = check(-1, 1, 1);
+        }
 
-        // 2. 万能四角邻居数格子闭包
-        auto check_corner = [&](int du, int dv) -> int {
-            int side1 = check(n.x + du * u.x, n.y + du * u.y, n.z + du * u.z);
-            int side2 = check(n.x + dv * v.x, n.y + dv * v.y, n.z + dv * v.z);
-            int corner = check(n.x + du * u.x + dv * v.x, n.y + du * u.y + dv * v.y, n.z + du * u.z + dv * v.z);
+        //  4. 纯数学免死变暗公式（全自动剔除平原，只有墙角才触发！）
+        float v0 = (s0_1 && s0_2) ? 0.45f : 1.0f - (s0_1 + s0_2 + c0_n) * 0.18f;
+        float v1 = (s1_1 && s1_2) ? 0.45f : 1.0f - (s1_1 + s1_2 + c1_n) * 0.18f;
+        float v2 = (s2_1 && s2_2) ? 0.45f : 1.0f - (s2_1 + s2_2 + c2_n) * 0.18f;
+        float v3 = (s3_1 && s3_2) ? 0.45f : 1.0f - (s3_1 + s3_2 + c3_n) * 0.18f;
 
-            return (side1 && side2) ? 3 : (side1 + side2 + corner);
-            };
-
-        // 3. 严格对齐你在着色器里的角点定义分发：0=左下(-1,-1), 1=右下(1,-1), 2=右上(1,1), 3=左上(-1,1)
-        float c0 = 1.0f - float(check_corner(-1, -1)) * 0.18f;
-        float c1 = 1.0f - float(check_corner(1, -1)) * 0.18f;
-        float c2 = 1.0f - float(check_corner(1, 1)) * 0.18f;
-        float c3 = 1.0f - float(check_corner(-1, 1)) * 0.18f;
-
-        glm::vec4 finalAO = glm::vec4(c0, c1, c2, c3);
+        // 5. 区间限幅锁
+        glm::vec4 finalAO = glm::vec4(v0, v1, v2, v3);
         for (int a = 0; a < 4; a++) {
             if (finalAO[a] < 0.45f) finalAO[a] = 0.45f;
             if (finalAO[a] > 1.0f)  finalAO[a] = 1.0f;
@@ -107,6 +133,7 @@ public:
 
         return finalAO;
     }
+
 
     void GenerateMesh(int chunkX, int chunkZ, const std::function<BlockType(int, int, int)>& getGlobalBlock) {
         std::vector<FaceInstance> validInstances;
