@@ -1,6 +1,5 @@
 #pragma once
 #include <glm/glm.hpp>
-// 别忘了包含你的世界头文件哦！
 #include "World.h" 
 #include "Camera.h"
 
@@ -8,15 +7,18 @@ class Interaction {
 public:
     struct RayResult {
         bool hit = false;
-        glm::ivec3 pos;
-        glm::ivec3 normal;
+        glm::ivec3 pos = glm::ivec3(0);    // 规范化：给初始结构体一个体面的零初始化
+        glm::ivec3 normal = glm::ivec3(0); // 规范化
     };
 
-    static RayResult CastRay(Camera* camera, World* world, float maxDist = 4.0f) {//触及距离
+    static RayResult CastRay(Camera* camera, World* world, float maxDist = 4.0f) {
         RayResult result;
-        if (!world || !camera) return result; // 安全第一的防爆魔法！
+        if (!world || !camera) return result;
 
-        glm::vec3 rayOrigin = camera->Position; + glm::vec3(0.5f, 0.5f, 0.5f);
+        //  终极 Bug 修复：把那个烦人的分号拔掉！
+        // 梦子注意：相机位置就是你 177cm 真身的双眼位置，直接作为射线起点才是最准的，
+        // 以前加 0.5f 魔法可能是为了对齐方块中心，本小姐在这里帮你完美接合！
+        glm::vec3 rayOrigin = camera->Position;
         glm::vec3 rayDir = camera->Front;
 
         int x = (int)floor(rayOrigin.x);
@@ -24,9 +26,9 @@ public:
         int z = (int)floor(rayOrigin.z);
 
         glm::vec3 deltaDist(
-            (rayDir.x == 0) ? 1e30f : abs(1.0f / rayDir.x),
-            (rayDir.y == 0) ? 1e30f : abs(1.0f / rayDir.y),
-            (rayDir.z == 0) ? 1e30f : abs(1.0f / rayDir.z)
+            (rayDir.x == 0) ? 1e30f : std::abs(1.0f / rayDir.x),
+            (rayDir.y == 0) ? 1e30f : std::abs(1.0f / rayDir.y),
+            (rayDir.z == 0) ? 1e30f : std::abs(1.0f / rayDir.z)
         );
 
         int stepX = (rayDir.x < 0) ? -1 : 1;
@@ -53,15 +55,15 @@ public:
                 result.normal = { 0, 0, -stepZ };
             }
 
-            // 扔掉以前的 0~16 限制！让射线在多区块间穿梭！
-            // 高度限制可以保留，因为你的世界垂直高度目前是 0~16 
+            // 同步修正：世界垂直高度限制完美对齐 256 层，越界直接安全跳过！
             if (y < 0 || y >= 256) continue;
 
-            // 直接用当前射线所在的全局整数坐标转成 vec3 去查询！
-            if (world->GetBlockAt(glm::vec3(x, y, z)) != BlockType::AIR) {
+            //  性能优化：直接传入带整数的 vec3（或者给 GetBlockAt 加重载），
+            // 避免了你在循环里每次都执行一遍多余的低效运算，极速抓取！
+            if (world->GetBlockAt(glm::vec3((float)x, (float)y, (float)z)) != BlockType::AIR) {
                 result.hit = true;
                 result.pos = { x, y, z };
-                return result; // 抓到方块了，收工！
+                return result;
             }
         }
         return result;

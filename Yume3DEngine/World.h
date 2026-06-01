@@ -48,6 +48,20 @@ public:
         }
     }
 
+    void ForceUpdateInteractionMesh(const ChunkPos& pos) {
+        if (chunks.count(pos) > 0) {
+            UpdateChunkMesh(pos); // 轰！！！当场重绘，立刻上屏！
+
+            // 魔法细节优化：既然这里已经当场硬熔炼完了，如果它原本在 meshQueue 队列里排队，
+            // 我们就顺手把它抹掉，防止下一帧又白白重复熔炼一次，再次压榨 CPU！
+            auto itM = std::find(meshQueue.begin(), meshQueue.end(), pos);
+            if (itM != meshQueue.end()) {
+                meshQueue.erase(itM);
+            }
+            meshSet.erase(pos); // 别忘了清理高速哈希阵
+        }
+    }
+
     void SafePushTerrainQueue(const ChunkPos& pos) {
         if (terrainSet.find(pos) == terrainSet.end()) {
             terrainQueue.push_back(pos);

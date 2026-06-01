@@ -342,14 +342,14 @@ private:
 
                     //  终极性能优化：如果方块真的改变了，绝不在主线程当场死等硬重绘！
                     if (blockChanged) {
-                        // 派发给我们之前写好的高贵 O(1) 熔炼队列，让它在下一帧平滑更新！
-                        world->SafePushMeshQueue(cp);
+                        // 1. 自己这个区块，一秒钟都不许等，当场硬熔炼！
+                        world->ForceUpdateInteractionMesh(cp);
 
-                        // 连带责任刷新，同时用 count 严格防御未生成区块导致的内存崩溃！
-                        if (lx == 0 && world->chunks.count({ cp.x - 1, cp.z })) world->SafePushMeshQueue({ cp.x - 1, cp.z });
-                        if (lx == 15 && world->chunks.count({ cp.x + 1, cp.z })) world->SafePushMeshQueue({ cp.x + 1, cp.z });
-                        if (lz == 0 && world->chunks.count({ cp.x, cp.z - 1 })) world->SafePushMeshQueue({ cp.x, cp.z - 1 });
-                        if (lz == 15 && world->chunks.count({ cp.x, cp.z + 1 })) world->SafePushMeshQueue({ cp.x, cp.z + 1 });
+                        // 2. 邻居区块如果有连带责任，同样在这一帧当场顺发熔炼！再也没有任何时间差！
+                        if (lx == 0 && world->chunks.count({ cp.x - 1, cp.z })) world->ForceUpdateInteractionMesh({ cp.x - 1, cp.z });
+                        if (lx == 15 && world->chunks.count({ cp.x + 1, cp.z })) world->ForceUpdateInteractionMesh({ cp.x + 1, cp.z });
+                        if (lz == 0 && world->chunks.count({ cp.x, cp.z - 1 })) world->ForceUpdateInteractionMesh({ cp.x, cp.z - 1 });
+                        if (lz == 15 && world->chunks.count({ cp.x, cp.z + 1 })) world->ForceUpdateInteractionMesh({ cp.x, cp.z + 1 });
                     }
                 }
             }
