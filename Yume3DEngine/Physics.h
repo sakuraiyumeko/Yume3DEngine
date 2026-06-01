@@ -23,7 +23,7 @@ public:
     // 2. 盒式碰撞检测（梦子 177cm 的全身结界）
     static bool CheckCollision(const glm::vec3& pos, Camera* camera, World* world) {
         float r = camera->PlayerRadius;
-        float currentHeight = camera->EyeHeight + 0.3f; // 177cm的高贵总身高
+        float currentHeight = camera->EyeHeight + 0.18f; // 177cm的高贵总身高
         float eye = camera->EyeHeight;
 
         // 1. 极其严谨的空间低维五层切片高度算子！

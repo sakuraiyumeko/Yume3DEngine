@@ -12,7 +12,7 @@ public:
         glm::ivec3 normal;
     };
 
-    static RayResult CastRay(Camera* camera, World* world, float maxDist = 3.0f) {//触及距离
+    static RayResult CastRay(Camera* camera, World* world, float maxDist = 4.0f) {//触及距离
         RayResult result;
         if (!world || !camera) return result; // 安全第一的防爆魔法！
 

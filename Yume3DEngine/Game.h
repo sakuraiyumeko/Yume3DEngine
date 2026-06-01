@@ -68,7 +68,7 @@ public:
         glfwSetCursorPosCallback(gameWindow->Handle, Input::MouseCallback);
 
         // 初始位置稍微抬高到 (8, 64, 8)，安全踩在你的平原上
-        camera = std::make_unique<Camera>(glm::vec3(8.0f, 65.0f, 8.0f));
+        camera = std::make_unique<Camera>(glm::vec3(8.0f, 45.0f, 8.0f));
         worldRenderer = std::make_unique<Renderer>();
     }
 
@@ -129,7 +129,7 @@ private:
                 isSprintLocked = false;
             }
 
-            float targetEyeHeight = isCrouching ? 1.2f : 1.7f;
+            float targetEyeHeight = isCrouching ? 1.5f : 1.62f;
 
             float targetSpeed = 5.0f; // 默认你原汁原味的日常走位 5.0f 移速
             if (isCrouching) {
@@ -143,11 +143,11 @@ private:
             float targetFov = isSprintLocked ? 75.0f : 60.0f;
 
             // 头顶防撞检测（保持你完美的判定不变）
-            if (camera->EyeHeight == 1.2f && targetEyeHeight == 1.7f) {
+            if (camera->EyeHeight == 1.5f && targetEyeHeight == 1.62f) {
                 glm::vec3 testPos = camera->Position;
-                testPos.y += (1.7f - 1.2f);
+                testPos.y += (1.62f - 1.5f);
                 if (Physics::CheckCollision(testPos, camera.get(), world.get())) {
-                    targetEyeHeight = 1.2f;
+                    targetEyeHeight = 1.5f;
                     targetSpeed = 2.0f;
                 }
             }
@@ -182,7 +182,8 @@ private:
             camera->HorizontalVelocity = glm::normalize(camera->HorizontalVelocity) * camera->MovementSpeed;
         }
 
-        world->UpdateInfiniteWorld(camera->Position, 2);
+        //渲染范围
+        world->UpdateInfiniteWorld(camera->Position, 10);
 
         processPhysics(dt);
         processInteraction(handle);

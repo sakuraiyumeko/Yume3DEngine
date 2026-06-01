@@ -17,8 +17,8 @@ public:
     glm::vec3 HorizontalVelocity = glm::vec3(0.0f); // 这一帧我想走的方向
     bool IsGrounded = false;
 
-    const float PlayerHeight = 2.0f;  // 全身高
-    float EyeHeight = 1.7f;     // 眼睛距离脚底的高度
+    const float PlayerHeight = 1.8f;  // 全身高
+    float EyeHeight = 1.62f;     // 眼睛距离脚底的高度
     const float PlayerRadius = 0.3f;   // 胖度（碰撞半径）
     float Gravity = -20.0f;      // 重力加速度
     const float JumpForce = 7.0f;      // 跳跃初速度
