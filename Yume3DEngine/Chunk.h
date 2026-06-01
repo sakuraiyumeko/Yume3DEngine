@@ -12,7 +12,9 @@ enum class BlockType : uint8_t {
     AIR = 0,
     GRASS = 1,
     DIRT = 2,
-    STONE = 3
+    STONE = 3,
+    LOG = 4,
+    LEAVES = 5
 };
 
 struct FaceInstance {

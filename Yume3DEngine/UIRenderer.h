@@ -83,8 +83,13 @@ public:
     // 2. 通用纯色几何绘制（依然使用同一个 uiShader）
     void DrawRect(Shader& uiShader, glm::vec2 position, glm::vec2 size, glm::vec4 color) {
         glDisable(GL_DEPTH_TEST);
-        uiShader.use();
 
+        //  核心大修复：唤醒沉睡的 Alpha 透明混合魔法阵！
+        glEnable(GL_BLEND);
+        // 设定混合公式：让 0.6 的黑和原版天空的蓝色进行完美的赛博朋克物理揉和！
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        uiShader.use();
         uiShader.setInt("useTexture", 0);
         uiShader.setVec4("uiColor", color);
 
@@ -96,6 +101,9 @@ public:
         glBindVertexArray(quadVAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
+
+        //  渲染完 UI 记得把混合关掉，防止污染你高贵的 3D 世界体素方块哦！
+        glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
     }
 

@@ -38,13 +38,20 @@ void main() {
 
     //  扩展 LUT 魔法阵：为以后你那两个月心血来潮做的收音机和甜甜圈留下空位！
     // 假设以后有更多方块，我们将上限动态解开，或者在这里做好安全防御
-    int atlasLUT[18] = int[](
+    int atlasLUT[30] = int[](
         1, 1, 1, 1, 2, 0, // 草方块 (顶泥底)
         2, 2, 2, 2, 2, 2, // 泥土
-        3, 3, 3, 3, 3, 3  // 石头
+        3, 3, 3, 3, 3, 3, // 石头
+        5, 6, 5, 6, 4, 7, //木头
+        8, 8, 8, 8, 8, 8  //树叶
     );
-    int bIndex = clamp(int(blockID) - 1, 0, 2); // 以后这里可以随心所欲扩展哦
+    int bIndex = clamp(int(blockID) - 1, 0, 5); // 以后这里可以随心所欲扩展哦
     int lutIndex = bIndex * 6 + face;
+    if (lutIndex < 0 || lutIndex >= 30) {
+        lutIndex = 12; 
+    }
+
+    // 轰！！！充满神圣安全感的 TexIndex 完美诞生！
     TexIndex = float(atlasLUT[lutIndex]);
 
     // 3D 实例化空间坐标构建

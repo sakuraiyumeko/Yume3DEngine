@@ -1,4 +1,6 @@
+#define STB_IMAGE_IMPLEMENTATION
 #include "Yume3DEngine/Game.h" // 引入我们唯一的宇宙总装核心！
+
 
 int main() {
     // 1. 召唤属于梦子的极致自研体素游戏引擎实体！

@@ -165,7 +165,7 @@ public:
 
         // 2. 资源装载
         ourShader = std::make_unique<Shader>("World.vs", "World.fs");
-        uiShader = std::make_unique<Shader>("ui.vs", "ui.fs");
+        uiShader = std::make_unique<Shader>("UI.vs", "UI.fs");
         texture = std::make_unique<Texture>("texture.jpg", GL_RGB);
 
         // 现代 OpenGL 必须绑定一个 VAO 才能执行 Draw 核心指令
@@ -362,6 +362,7 @@ private:
     void render() {
         worldRenderer->DrawScene(*gameWindow, *ourShader, *texture, *camera, world.get(), VAO);
         ui->DrawCrosshair(*uiShader); // 白嫖全能着色器画准星！
+        ui->DrawRect(*uiShader, glm::vec2(-0.4f, -0.9f), glm::vec2(0.8f, 0.12f), glm::vec4(0.0f, 0.0f, 0.0f, 0.6f));
     }
 };
 
