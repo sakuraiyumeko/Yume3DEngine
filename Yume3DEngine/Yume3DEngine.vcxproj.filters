@@ -62,6 +62,9 @@
     <ClInclude Include="Crypto.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="UIRenderer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="shader.vs">

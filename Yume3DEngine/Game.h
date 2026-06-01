@@ -15,6 +15,7 @@
 #include "Renderer.h"
 #include "Interaction.h"
 #include "Physics.h"
+#include "UIRenderer.h"
 
 class Game {
 private:
@@ -24,6 +25,7 @@ private:
     std::unique_ptr<Texture> texture;
     std::unique_ptr<World> world;         // 大写的 World 是类，小写的 world 是变量名！
     std::unique_ptr<Renderer> worldRenderer;
+    std::unique_ptr<UIRenderer> ui;
     std::unique_ptr<Camera> camera;
 
     BlockType currentSelectBlock = BlockType::GRASS;
@@ -37,7 +39,7 @@ public:
     // 构造函数：把箱子先摆好
     Game() : VAO(0), IsN(false), isSprintLocked(false), interactionTimer(0.0f), gameWindow(nullptr), currentSelectBlock(BlockType::GRASS), ourShader(nullptr),
         texture(nullptr), world(nullptr),
-        worldRenderer(nullptr), camera(nullptr) {
+        worldRenderer(nullptr), camera(nullptr), ui(nullptr) {
     }
 
     ~Game() {
@@ -70,6 +72,7 @@ public:
         // 初始位置稍微抬高到 (8, 64, 8)，安全踩在你的平原上
         camera = std::make_unique<Camera>(glm::vec3(8.0f, 45.0f, 8.0f));
         worldRenderer = std::make_unique<Renderer>();
+        ui = std::make_unique<UIRenderer>();
     }
 
     void RunLoop() {
@@ -336,6 +339,7 @@ private:
 
     void render() {
         worldRenderer->DrawScene(*gameWindow, *ourShader, *texture, *camera, world.get(), VAO);
+        ui->DrawUI();
     }
 };
 

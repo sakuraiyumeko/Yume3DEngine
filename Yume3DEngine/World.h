@@ -3,6 +3,7 @@
 #include <memory>
 #include "Chunk.h"
 #include "BerlinNoise.h"
+#include <unordered_set>
 
 // 用一对整数代表 Chunk 坐标 (比如 [0,0], [1,0])
 struct ChunkPos {
@@ -20,11 +21,37 @@ struct ChunkPos {
     }
 };
 
+struct ChunkPosHash {
+    std::size_t operator()(const ChunkPos& p) const {
+        return std::hash<int>()(p.x) ^ (std::hash<int>()(p.z) << 1);
+    }
+};
+
 class World {
 public:
     std::map<ChunkPos, std::unique_ptr<Chunk>> chunks;
-    std::vector<ChunkPos> meshQueue;
+
+    // 核心大重构：用 vector 保持更新顺序，用 unordered_set 实现 O(1) 超级无敌快去重！
     std::vector<ChunkPos> terrainQueue;
+    std::unordered_set<ChunkPos, ChunkPosHash> terrainSet;
+
+    std::vector<ChunkPos> meshQueue;
+    std::unordered_set<ChunkPos, ChunkPosHash> meshSet;
+
+    //  O(1) 级别瞬间推入魔法！再也不用辛辛苦苦遍历整个 vector 了！
+    void SafePushMeshQueue(const ChunkPos& pos) {
+        if (meshSet.find(pos) == meshSet.end()) {
+            meshQueue.push_back(pos);
+            meshSet.insert(pos);
+        }
+    }
+
+    void SafePushTerrainQueue(const ChunkPos& pos) {
+        if (terrainSet.find(pos) == terrainSet.end()) {
+            terrainQueue.push_back(pos);
+            terrainSet.insert(pos);
+        }
+    }
 
     void UpdateChunkMesh(ChunkPos pos) {
         if (!chunks.count(pos)) return;
@@ -49,13 +76,8 @@ public:
         for (int x = currentChunkX - radius; x <= currentChunkX + radius; x++) {
             for (int z = currentChunkZ - radius; z <= currentChunkZ + radius; z++) {
                 ChunkPos pos = { x, z };
-
-                //  核心优化一：当发现前方有新世界，绝对不准在主线程当场 new 和铺地形！
-                // 我们只是把它的坐标，轻轻地塞进【地形肉体排队名册】里排队等候！
                 if (chunks.count(pos) == 0) {
-                    if (std::find(terrainQueue.begin(), terrainQueue.end(), pos) == terrainQueue.end()) {
-                        terrainQueue.push_back(pos);
-                    }
+                    SafePushTerrainQueue(pos); // 瞬间判重并推入！
                 }
             }
         }
@@ -69,41 +91,40 @@ public:
         if (!terrainQueue.empty()) {
             ChunkPos posToCreate = terrainQueue.back();
             terrainQueue.pop_back();
+            terrainSet.erase(posToCreate); // 记得在哈希集合里也抹掉它
 
             if (chunks.count(posToCreate) == 0) {
                 chunks[posToCreate] = std::make_unique<Chunk>();
-                FillFlatChunk(chunks[posToCreate].get(), posToCreate.x, posToCreate.z); // 纯数学铺地
+                FillFlatChunk(chunks[posToCreate].get(), posToCreate.x, posToCreate.z);
 
-                // 当这个新区块的方块肉体诞生成功的这一瞬间，才把它和它那 4 个受到了惊醒的老邻居，
-                // 统统整整齐齐地送进【网格重构排队单】里去老老实实排队！
-                if (std::find(meshQueue.begin(), meshQueue.end(), posToCreate) == meshQueue.end()) meshQueue.push_back(posToCreate);
+                SafePushMeshQueue(posToCreate);
 
-                ChunkPos neighbors[4] = { {posToCreate.x + 1, posToCreate.z}, {posToCreate.x - 1, posToCreate.z}, {posToCreate.x, posToCreate.z + 1}, {posToCreate.x, posToCreate.z - 1} };
+                ChunkPos neighbors[4] = {
+                    {posToCreate.x + 1, posToCreate.z}, {posToCreate.x - 1, posToCreate.z},
+                    {posToCreate.x, posToCreate.z + 1}, {posToCreate.x, posToCreate.z - 1}
+                };
                 for (const auto& nbPos : neighbors) {
                     if (chunks.count(nbPos) > 0) {
-                        if (std::find(meshQueue.begin(), meshQueue.end(), nbPos) == meshQueue.end()) {
-                            meshQueue.push_back(nbPos);
-                        }
+                        SafePushMeshQueue(nbPos); // 瞬间判重推入邻居！
                     }
                 }
-            }
-        }
-
-        //  流水线 B：每一帧【最多只允许 1 个】区块去呼唤贪婪合并并强行执行 glBufferData 显存提交！
-        // 轰！！！把原先并发 4 个导致的显卡死锁，强行限流降维成每帧绝对公允的 1 个！
-        // 配合垂直同步，主线程在这一帧里提交完 1 个网格后，开开心心去躺平，彻底杜绝任何咯噔和断流卡顿！
-        if (!meshQueue.empty()) {
-            ChunkPos posToUpdate = meshQueue.back();
-            meshQueue.pop_back();
-
-            if (chunks.count(posToUpdate) > 0) {
-                UpdateChunkMesh(posToUpdate); // 执行熔炼与 glBufferData 提交
             }
         }
 
         // ====================================================
         // 【第三阶段：冷酷卸载跑得太远的陈旧世界（保持你原汁原味的清理名单，防爆安全！）】
         // ====================================================
+        if (!meshQueue.empty()) {
+            ChunkPos posToUpdate = meshQueue.back();
+            meshQueue.pop_back();
+            meshSet.erase(posToUpdate); // 记得在哈希集合里也抹掉它
+
+            if (chunks.count(posToUpdate) > 0) {
+                UpdateChunkMesh(posToUpdate);
+            }
+        }
+
+        // 4. 视距之外的区块驱逐魔法
         std::vector<ChunkPos> chunksToRemove;
         for (auto& pair : chunks) {
             ChunkPos pos = pair.first;
@@ -114,12 +135,14 @@ public:
         for (ChunkPos pos : chunksToRemove) {
             chunks.erase(pos);
 
-            // 同步在两个排队名单里干净抹除，防爆安全，哼唧！
+            // 这里的清除也全部同步进化为 O(1) 或者更安全的高效清除！
             auto itT = std::find(terrainQueue.begin(), terrainQueue.end(), pos);
             if (itT != terrainQueue.end()) terrainQueue.erase(itT);
+            terrainSet.erase(pos);
 
             auto itM = std::find(meshQueue.begin(), meshQueue.end(), pos);
             if (itM != meshQueue.end()) meshQueue.erase(itM);
+            meshSet.erase(pos);
         }
     }
 
