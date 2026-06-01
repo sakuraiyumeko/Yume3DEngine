@@ -56,7 +56,7 @@
     <ClInclude Include="World.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="BerlinNoise.h">
+    <ClInclude Include="PerlinNoise.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Crypto.h">

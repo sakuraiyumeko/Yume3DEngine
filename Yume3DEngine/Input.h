@@ -9,76 +9,44 @@
 
 class Input {
 private:
-    // 1. 鼠标时空隐私数据（完全内聚在私有结界里，外面再也别想偷看！）
     static inline float LastX = 400.0f;
     static inline float LastY = 300.0f;
-    static inline float XOffset = 0.0f;
-    static inline float YOffset = 0.0f;
     static inline bool FirstMouse = true;
-
     static inline float DeltaTime = 0.0f;
     static inline float LastFrame = 0.0f;
 
-    // 下面这两个大数组的声明也要同步修正顺序噢，哼唧！
-    static inline bool Keys[1024] = { false };
+    // 梦子注意：保留你原汁原味的按键记忆状态
     static inline bool KeysChanged[1024] = { false };
 
 public:
-    // 【核心大招一：时钟与状态现场熔炼术】—— 每一帧都要在循环最开头调用它！
     static void Update() {
-        // 计算时钟差，确保梦子 9km/h 快走在任何配置的显卡下都绝对匀速
         float currentFrame = static_cast<float>(glfwGetTime());
         DeltaTime = currentFrame - LastFrame;
         LastFrame = currentFrame;
-
     }
 
-    // 【核心大招二：高雅的全局时钟外借接口】
     static float GetDeltaTime() { return DeltaTime; }
 
-    // 【核心大招三：高阶按键判定接口】
-    // 只要按键被按住，就一直返回 true（用来驱动 WASD 疯狂走位和空格飞天！）
+    // 完美复活！原汁原味的连续按键判定接口，绝不报错
     static bool IsKeyPressed(GLFWwindow* window, int key) {
         return glfwGetKey(window, key) == GLFW_PRESS;
     }
 
-    // 【卷死两厂的高阶独家符文】：只有在“刚按下去的那一帧”返回 true，长按无效！
-    // 梦子快看！有了这个接口，你未来所有的全屏切换、或者打开背包，连 static 都不用写了，直接一行搞定！
+    // 完美复活！原汁原味的单次单帧按键锁定接口
     static bool IsKeyJustPressed(GLFWwindow* window, int key) {
         bool isPressed = (glfwGetKey(window, key) == GLFW_PRESS);
         bool justPressed = isPressed && !KeysChanged[key];
-        KeysChanged[key] = isPressed; // 同步按键记忆锁
+        KeysChanged[key] = isPressed;
         return justPressed;
     }
 
-    // 【核心大招四：原生鼠标位移接收回调阵法】
-    // 梦子注意！这个必须是符合 GLFW 规矩的静态回调函数噢！
-    static void MouseCallback(GLFWwindow* window, double xposIn, double yposIn) {
+    static void MouseCallback(GLFWwindow* window, double xposIn, double yposIn) {}
 
-        float xpos = static_cast<float>(xposIn);
-        float ypos = static_cast<float>(yposIn);
-
-        if (FirstMouse) {
-            LastX = xpos;
-            LastY = ypos;
-            FirstMouse = false;
-        }
-
-        // 计算硬件级偏移
-        XOffset = xpos - LastX;
-        YOffset = LastY - ypos; // 反转 Y 轴，抵抗世界倒退！
-
-        LastX = xpos;
-        LastY = ypos;
-    }
-
-    // 【核心大招五：对外派发鼠标运动偏移量的接口】
+    // 完美复活！梦子专属的原生无边界鼠标绝对偏移量读取函数
     static glm::vec2 GetMouseOffset(GLFWwindow* handle) {
         double xpos, ypos;
-        // 1. 直接读取系统捕获到的、无边界的虚拟高精度绝对位置
         glfwGetCursorPos(handle, &xpos, &ypos);
 
-        //  梦子专属：第一次开局时防止视角在起点产生超频大跳跃的结界
         static bool firstMouse = true;
         static double lastX = xpos;
         static double lastY = ypos;
@@ -88,14 +56,12 @@ public:
             firstMouse = false;
         }
 
-        // 2. 纯净算差值，完全没有手动居中的反向内耗！
         float xoffset = static_cast<float>(xpos - lastX);
-        float yoffset = static_cast<float>(lastY - ypos); // 注意：Y轴在屏幕上和 3D 里相反，所以用 last - current 噢！
+        float yoffset = static_cast<float>(lastY - ypos);
 
         lastX = xpos;
         lastY = ypos;
 
-        // 3. 乘上你写在 Camera 里的顺滑灵敏度系数，高高兴兴回传！
         return glm::vec2(xoffset, yoffset);
     }
 };

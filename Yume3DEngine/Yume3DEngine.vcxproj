@@ -140,7 +140,7 @@
     <ClCompile Include="glad.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BerlinNoise.h" />
+    <ClInclude Include="PerlinNoise.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Chunk.h" />
     <ClInclude Include="Crypto.h" />

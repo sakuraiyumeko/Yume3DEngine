@@ -2,8 +2,10 @@
 #include <map>
 #include <memory>
 #include "Chunk.h"
-#include "BerlinNoise.h"
+#include "PerlinNoise.h"
 #include <unordered_set>
+#include <cmath>
+#include <algorithm>
 
 // 用一对整数代表 Chunk 坐标 (比如 [0,0], [1,0])
 struct ChunkPos {
@@ -82,6 +84,14 @@ public:
             }
         }
 
+        if (terrainQueue.size() > 1) {
+            std::sort(terrainQueue.begin(), terrainQueue.end(), [currentChunkX, currentChunkZ](const ChunkPos& a, const ChunkPos& b) {
+                int distA = std::abs(a.x - currentChunkX) + std::abs(a.z - currentChunkZ);
+                int distB = std::abs(b.x - currentChunkX) + std::abs(b.z - currentChunkZ);
+                return distA > distB; // 远的排在前面，近的排在尾部，完美拦截！
+                });
+        }
+
         // ====================================================
         // 【第二阶段：真·时空平摊双流消纳流水线（彻底干碎 glBufferData 死锁！）】
         // ====================================================
@@ -109,6 +119,14 @@ public:
                     }
                 }
             }
+        }
+
+        if (meshQueue.size() > 1) {
+            std::sort(meshQueue.begin(), meshQueue.end(), [currentChunkX, currentChunkZ](const ChunkPos& a, const ChunkPos& b) {
+                int distA = std::abs(a.x - currentChunkX) + std::abs(a.z - currentChunkZ);
+                int distB = std::abs(b.x - currentChunkX) + std::abs(b.z - currentChunkZ);
+                return distA > distB;
+                });
         }
 
         // ====================================================
