@@ -67,16 +67,16 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shader.vs">
+    <None Include="World.vs">
       <Filter>源文件</Filter>
     </None>
-    <None Include="shader.fs">
+    <None Include="World.fs">
       <Filter>源文件</Filter>
     </None>
-    <None Include="crosshair.vs">
+    <None Include="UI.vs">
       <Filter>源文件</Filter>
     </None>
-    <None Include="crosshair.fs">
+    <None Include="UI.fs">
       <Filter>源文件</Filter>
     </None>
   </ItemGroup>

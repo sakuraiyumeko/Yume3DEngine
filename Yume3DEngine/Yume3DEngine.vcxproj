@@ -156,10 +156,10 @@
     <ClInclude Include="World.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="crosshair.fs" />
-    <None Include="crosshair.vs" />
-    <None Include="shader.fs" />
-    <None Include="shader.vs" />
+    <None Include="UI.fs" />
+    <None Include="UI.vs" />
+    <None Include="World.fs" />
+    <None Include="World.vs" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="texture.jpg" />

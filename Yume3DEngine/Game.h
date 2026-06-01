@@ -21,9 +21,10 @@ class Game {
 private:
     // 梦子你看，这些是我们的“家当”
     std::unique_ptr<Window> gameWindow;
-    std::unique_ptr<Shader> ourShader;
+    std::unique_ptr<Shader> ourShader;        // 3D 方块世界的着色器
+    std::unique_ptr<Shader> uiShader;         //  新增：外置的全能通用 UI 着色器！
     std::unique_ptr<Texture> texture;
-    std::unique_ptr<World> world;         // 大写的 World 是类，小写的 world 是变量名！
+    std::unique_ptr<World> world;
     std::unique_ptr<Renderer> worldRenderer;
     std::unique_ptr<UIRenderer> ui;
     std::unique_ptr<Camera> camera;
@@ -163,7 +164,8 @@ public:
         world->GenerateWorld(1);
 
         // 2. 资源装载
-        ourShader = std::make_unique<Shader>("shader.vs", "shader.fs");
+        ourShader = std::make_unique<Shader>("World.vs", "World.fs");
+        uiShader = std::make_unique<Shader>("ui.vs", "ui.fs");
         texture = std::make_unique<Texture>("texture.jpg", GL_RGB);
 
         // 现代 OpenGL 必须绑定一个 VAO 才能执行 Draw 核心指令
@@ -359,7 +361,7 @@ private:
 
     void render() {
         worldRenderer->DrawScene(*gameWindow, *ourShader, *texture, *camera, world.get(), VAO);
-        ui->DrawUI();
+        ui->DrawCrosshair(*uiShader); // 白嫖全能着色器画准星！
     }
 };
 
