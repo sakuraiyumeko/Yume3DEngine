@@ -5,10 +5,10 @@ MAGIC_KEY = 0x5A
 
 # 梦子要给朋友送去的四个加密文件名单
 targets = {
-    "shader.vs": "shader.vs.bin",
-    "shader.fs": "shader.fs.bin",
-    "crosshair.vs": "crosshair.vs.bin",
-    "crosshair.fs": "crosshair.fs.bin"
+    "UI.vs": "UI.vs.bin",
+    "UI.fs": "UI.fs.bin",
+    "World.vs": "World.vs.bin",
+    "World.fs": "World.fs.bin"
 }
 
 print(" 正在为梦子的天才注释拉起二进制异或结界... ")

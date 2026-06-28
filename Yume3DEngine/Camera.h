@@ -22,11 +22,15 @@ public:
     const float PlayerRadius = 0.3f;
     float Gravity = -20.0f;
     const float JumpForce = 7.0f;
+    const float ACCELERATION = 9.0f; 
+    float CurrentFriction = 0.0f;         // 改为变量：由物理引擎每帧动态写入
+    const float DEFAULT_FRICTION = 15.0f;
+    glm::vec3 WishDir = glm::vec3(0.0f);
 
     float Yaw;
     float Pitch;
-    float MovementSpeed = 5.0f;
-    float Zoom = 60.0f;
+    float MovementSpeed = 3.0f;
+    float Zoom = 75.0f;
 
     //  高贵的可配置属性：把鼠标灵敏度提取出来，再也不用硬编码 0.1f 啦！
     float MouseSensitivity = 0.1f;
@@ -47,14 +51,14 @@ public:
     glm::mat4 GetViewMatrix() { return glm::lookAt(Position, Position + Front, Up); }
 
     // 处理键盘：收集移动方向
-    void ProcessKeyboard(int direction, float dt) {
+    void ProcessKeyboard(int direction) {
         glm::vec3 moveFront = glm::normalize(glm::vec3(Front.x, 0.0f, Front.z));
         glm::vec3 moveRight = glm::normalize(glm::vec3(Right.x, 0.0f, Right.z));
 
-        if (direction == 1) HorizontalVelocity += moveFront;
-        if (direction == 2) HorizontalVelocity -= moveFront;
-        if (direction == 3) HorizontalVelocity -= moveRight;
-        if (direction == 4) HorizontalVelocity += moveRight;
+        if (direction == 1) WishDir += moveFront;
+        if (direction == 2) WishDir -= moveFront;
+        if (direction == 3) WishDir -= moveRight;
+        if (direction == 4) WishDir += moveRight;
     }
 
     void ProcessMouseMovement(float xoffset, float yoffset) {

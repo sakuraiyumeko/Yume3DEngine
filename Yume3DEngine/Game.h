@@ -35,6 +35,13 @@ private:
     bool IsN = false;
     bool isSprintLocked = false;
     float interactionTimer = 0.0f;
+    float currentvelo = 0;
+
+    float VelocityProcess(float velo) {
+        currentvelo = velo;
+        currentvelo = 0.9 * currentvelo + 0.1 * velo;
+        return currentvelo;
+    }
 
     void processInputStates(GLFWwindow* handle, float dt) {
         if (Input::IsKeyJustPressed(handle, GLFW_KEY_N)) IsN = !IsN;
@@ -56,11 +63,11 @@ private:
             camera->IsGrounded = false;
 
             //  飞天极限超速魔法：默认飞行 15.0f，一旦开启 LC 冲刺锁，直接狂暴飙到 32.0f（你的极限冲刺速度！）
-            float targetSpeed = isSprintLocked ? 32.0f : 15.0f;
+            float targetSpeed = isSprintLocked ? 20.0f : 10.0f;
             camera->MovementSpeed = targetSpeed;
 
             // 飞行时的视野拉伸：冲刺时 FOV 放大到 85 度，体验时空撕裂感！
-            float targetFov = isSprintLocked ? 85.0f : 60.0f;
+            float targetFov = isSprintLocked ? 100.0f : 75.0f;
 
             // 梦子注意：飞天时的垂直升降速度也同步享受速度加成噢！
             float verticalSpeed = targetSpeed;
@@ -73,7 +80,7 @@ private:
         }
         else {
             // 普通生存模式的物理法则保持完美不变
-            camera->Gravity = -20.0f;
+            camera->Gravity = -18.0f;
 
             if (Input::IsKeyPressed(handle, GLFW_KEY_SPACE) && camera->IsGrounded) {
                 camera->Velocity.y = camera->JumpForce;
@@ -91,15 +98,15 @@ private:
             }
 
             float targetEyeHeight = isCrouching ? 1.5f : 1.62f;
-            float targetSpeed = 5.0f;
+            float targetSpeed = 3.0f;
             if (isCrouching) {
-                targetSpeed = 2.0f;
+                targetSpeed = 1.5f;
             }
             else if (isSprintLocked) {
-                targetSpeed = 7.0f;
+                targetSpeed = 5.0f;
             }
 
-            float targetFov = isSprintLocked ? 75.0f : 60.0f;
+            float targetFov = isSprintLocked ? 95.0f : 75.0f;
 
             if (camera->EyeHeight == 1.5f && targetEyeHeight == 1.62f) {
                 glm::vec3 testPos = camera->Position;
@@ -126,15 +133,18 @@ private:
 
     //  拆出来的子模块二：专门搞键盘 4 方向的叠加向量和归一化防斜向超速
     void processMovementVectors(GLFWwindow* handle, float dt) {
-        camera->HorizontalVelocity = glm::vec3(0.0f);
+        // 每一帧开头，先把上一帧的移动意图清空
+        camera->WishDir = glm::vec3(0.0f);
 
-        if (Input::IsKeyPressed(handle, GLFW_KEY_W)) camera->ProcessKeyboard(1, dt);
-        if (Input::IsKeyPressed(handle, GLFW_KEY_S)) camera->ProcessKeyboard(2, dt);
-        if (Input::IsKeyPressed(handle, GLFW_KEY_A)) camera->ProcessKeyboard(3, dt);
-        if (Input::IsKeyPressed(handle, GLFW_KEY_D)) camera->ProcessKeyboard(4, dt);
+        // 收集 W A S D 的方向
+        if (Input::IsKeyPressed(handle, GLFW_KEY_W)) camera->ProcessKeyboard(1);
+        if (Input::IsKeyPressed(handle, GLFW_KEY_S)) camera->ProcessKeyboard(2);
+        if (Input::IsKeyPressed(handle, GLFW_KEY_A)) camera->ProcessKeyboard(3);
+        if (Input::IsKeyPressed(handle, GLFW_KEY_D)) camera->ProcessKeyboard(4);
 
-        if (glm::length(camera->HorizontalVelocity) > 0.0f) {
-            camera->HorizontalVelocity = glm::normalize(camera->HorizontalVelocity) * camera->MovementSpeed;
+        // 如果有按键按下，执行归一化，彻底防范斜向走超速
+        if (glm::length(camera->WishDir) > 0.0f) {
+            camera->WishDir = glm::normalize(camera->WishDir);
         }
     }
 
@@ -143,6 +153,8 @@ private:
         if (Input::IsKeyJustPressed(handle, GLFW_KEY_1)) { currentSelectBlock = BlockType::GRASS; }
         else if (Input::IsKeyJustPressed(handle, GLFW_KEY_2)) { currentSelectBlock = BlockType::DIRT; }
         else if (Input::IsKeyJustPressed(handle, GLFW_KEY_3)) { currentSelectBlock = BlockType::STONE; }
+        else if (Input::IsKeyJustPressed(handle, GLFW_KEY_2)) { currentSelectBlock = BlockType::LOG; }
+        else if (Input::IsKeyJustPressed(handle, GLFW_KEY_3)) { currentSelectBlock = BlockType::LEAVES; }
     }
 
 public:
@@ -240,11 +252,78 @@ private:
     }
 
     void processPhysics(float dt) {
-        //  核心优化：高贵的穿墙模式直接在这里叠加已经用 15.0f 算好的完美向量，然后直接潇洒离场！
+        if (IsN) {
+            camera->CurrentFriction = 2.0f;
+        }
+        else if (camera->IsGrounded) {
+            glm::vec3 footBlockPos = camera->Position;
+            footBlockPos.y -= (camera->EyeHeight + 0.1f);
+            BlockType standingBlock = world->GetBlockAt(footBlockPos);
+
+            //if (standingBlock == BlockType::AIR) {
+            //    camera->CurrentFriction = 0.5f; // 冰面允许大幅度打滑
+            //}
+            //else if (standingBlock == BlockType::SOUL_SAND) {
+            //    camera->CurrentFriction = 18.0f; // 瞬间粘住
+            //}
+            //else {
+                camera->CurrentFriction = camera->DEFAULT_FRICTION; // 普通地面默认 8.0f 
+            //}
+        }
+        else {
+            camera->CurrentFriction = 1.0f; // 空中保留更多身法惯性
+        }
+
+        // --- 1. 【核心修复】：Quake / Minecraft 式投影加速与分轴阻尼 ---
+        glm::vec3 curVel = camera->HorizontalVelocity;
+        float wishSpeed = camera->MovementSpeed;
+
+        if (glm::length(camera->WishDir) > 0.001f) {
+            glm::vec3 wishDir = glm::normalize(camera->WishDir);
+
+            // 【消除转向打滑的关键】：计算当前速度在玩家“移动意图方向”上的投影
+            float currentSpeedInWishDir = glm::dot(curVel, wishDir);
+
+            // 计算这一帧还能往这个方向追加多少速度
+            float addSpeed = wishSpeed - currentSpeedInWishDir;
+
+            if (addSpeed > 0.0f) {
+                // 根据按键方向强行追加速度，数值越大起步和转向越灵敏
+                float accelSpeed = camera->ACCELERATION * dt * wishSpeed;
+                if (accelSpeed > addSpeed) accelSpeed = addSpeed;
+                curVel += wishDir * accelSpeed;
+            }
+
+            // 对于“垂直于移动意图”的侧向惯性残留，实行强力的摩擦衰减，防止严重的横向漂移
+            glm::vec3 sideVel = curVel - wishDir * glm::dot(curVel, wishDir);
+            if (glm::length(sideVel) > 0.001f) {
+                // 普通方块上侧向刹车极快，冰面上侧向刹车慢（保留漂移）
+                curVel -= sideVel * (1.0f - glm::exp(-camera->CurrentFriction * 1.5f * dt));
+            }
+        }
+        else {
+            // 【完全松开按键】：全轴执行平滑的摩擦力自然衰减
+            if (glm::length(curVel) > 0.001f) {
+                curVel *= glm::exp(-camera->CurrentFriction * dt);
+            }
+            else {
+                curVel = glm::vec3(0.0f);
+            }
+        }
+
+        camera->HorizontalVelocity = curVel;
+
+        // --- 2. 速度限幅（动态适配你在 processInputStates 里算好的各种状态速） ---
+        float speed = glm::length(camera->HorizontalVelocity);
+        if (speed > camera->MovementSpeed) {
+            camera->HorizontalVelocity = glm::normalize(camera->HorizontalVelocity) * camera->MovementSpeed;
+        }
+
+        // 穿墙模式直接潇洒离场
         if (IsN) {
             camera->Position.x += camera->HorizontalVelocity.x * dt;
             camera->Position.z += camera->HorizontalVelocity.z * dt;
-            return; // 轰！！！后面的生存碰撞想都别想占满 CPU！
+            return;
         }
 
         // 下面全都是普通生存模式下，梦子 177cm 身高专属的严密 AABB 碰撞检测
@@ -253,16 +332,21 @@ private:
 
         glm::vec3 oldPos = camera->Position;
 
+        // X 轴移动与碰撞
         camera->Position.x += camera->HorizontalVelocity.x * dt;
         if (Physics::CheckCollision(camera->Position, camera.get(), world.get())) {
             camera->Position.x = oldPos.x;
+            camera->HorizontalVelocity.x = 0.0f; // 撞墙清除 X 轴速度分量
         }
 
+        // Z 轴移动与碰撞
         camera->Position.z += camera->HorizontalVelocity.z * dt;
         if (Physics::CheckCollision(camera->Position, camera.get(), world.get())) {
             camera->Position.z = oldPos.z;
+            camera->HorizontalVelocity.z = 0.0f; // 撞墙清除 Z 轴速度分量
         }
 
+        // Y 轴移动与碰撞
         camera->Position.y += camera->Velocity.y * dt;
         if (Physics::CheckCollision(camera->Position, camera.get(), world.get())) {
             if (camera->Velocity.y < 0) {
