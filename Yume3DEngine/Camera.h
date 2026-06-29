@@ -29,7 +29,7 @@ public:
 
     float Yaw;
     float Pitch;
-    float MovementSpeed = 3.0f;
+    float MovementSpeed = 3.5f;
     float Zoom = 75.0f;
 
     //  高贵的可配置属性：把鼠标灵敏度提取出来，再也不用硬编码 0.1f 啦！

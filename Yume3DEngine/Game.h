@@ -98,7 +98,7 @@ private:
             }
 
             float targetEyeHeight = isCrouching ? 1.5f : 1.62f;
-            float targetSpeed = 3.0f;
+            float targetSpeed = 3.5f;
             if (isCrouching) {
                 targetSpeed = 1.5f;
             }
