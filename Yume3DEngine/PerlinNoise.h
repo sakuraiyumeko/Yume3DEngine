@@ -2,6 +2,8 @@
 #include <glm/glm.hpp>
 #include <cmath>
 
+
+
 class TerrainNoise {
 private:
     // 现代 C++ 规范：将神圣的哈希魔数全部归位
@@ -10,11 +12,13 @@ private:
     static constexpr int PRIME_SEED = 668265261; // 专门用来引入种子的神圣质数
     static constexpr int HASH_SCRAMBLE = 1274126177;
 
+    inline static int WorldSeed;
+
+
     // 1. 完美融入世界种子的伪随机渐变查找表
     static glm::vec2 GetGradient(int x, int z) {
-        int seed = 124325213431;
         // 先用种子乘以特定质数打碎，再与 X、Z 轴的哈希结果强力揉碎在一起
-        int n = x * PRIME_X + z * PRIME_Z + seed * PRIME_SEED;
+        int n = x * PRIME_X + z * PRIME_Z + WorldSeed * PRIME_SEED;
 
         // 经典的雪崩大洗牌机制
         n = (n ^ (n >> 13)) * HASH_SCRAMBLE;
@@ -30,6 +34,10 @@ private:
 
 public:
     // 2. 核心大招：对外暴露的带种子二维柏林噪声
+    static void SetSeed(int newSeed) {
+        WorldSeed = newSeed;
+    }
+
     static float GetPerlin(float x, float z) {
         int x0 = static_cast<int>(floor(x)); int x1 = x0 + 1;
         int z0 = static_cast<int>(floor(z)); int z1 = z0 + 1;

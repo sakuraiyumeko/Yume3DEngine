@@ -36,6 +36,7 @@ private:
     bool isSprintLocked = false;
     float interactionTimer = 0.0f;
     float currentvelo = 0;
+    int worldseed = 0;
 
     float VelocityProcess(float velo) {
         currentvelo = velo;
@@ -169,6 +170,13 @@ public:
     }
 
     void Init(int width, int height, const char* title) {
+
+        int seed = 0;
+        printf("Enter a seed: ");
+        scanf_s("%d", &seed);
+        this->worldseed = seed;
+        TerrainNoise::SetSeed(seed);
+
         gameWindow = std::make_unique<Window>(width, height, title);
 
         // 1. 世界诞生
@@ -193,7 +201,26 @@ public:
         glfwSetCursorPosCallback(gameWindow->Handle, Input::MouseCallback);
 
         // 初始位置稍微抬高到 (8, 64, 8)，安全踩在你的平原上
-        camera = std::make_unique<Camera>(glm::vec3(8.0f, 45.0f, 8.0f));
+        float spawnX = 8.0f;
+        float spawnZ = 8.0f;
+
+        // 完美克隆你的世界公式：100% 还原地表固体方块高度
+        float nBase = TerrainNoise::GetPerlin(spawnX * 0.025f, spawnZ * 0.025f) * 25.0f;
+        float nDetail = TerrainNoise::GetPerlin(spawnX * 0.1f, spawnZ * 0.1f) * 4.0f;
+        int surfH = static_cast<int>(40.0f + nBase + nDetail);
+
+        // 边界安全限幅，跟你的世界法则绝对对齐
+        if (surfH < 1) surfH = 1;
+        if (surfH >= 256) surfH = 255;
+
+        // 生态防卡锁：因为 (8, 8) 在 0 号区块的中心，极易高概率长出橡树！
+        // 橡树的主干一般高 5 格，为了彻底防止梦子开局卡在树叶或者树干里窒息，
+        // 我们在这里直接把出生高度往上安全抬高 6 格，从空中优雅降落，配合你高贵的 AABB 碰撞，她会自动完美落在树顶或草地上！
+        float safeSpawnY = static_cast<float>(surfH) + 2.0f + 1.62f;
+
+        // 动态出生位置，彻底告别卡墙地狱！
+        camera = std::make_unique<Camera>(glm::vec3(spawnX, safeSpawnY, spawnZ));
+
         worldRenderer = std::make_unique<Renderer>();
         ui = std::make_unique<UIRenderer>();
     }
