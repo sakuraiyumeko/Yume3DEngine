@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #ifndef GAME_H
 #define GAME_H
@@ -19,10 +19,10 @@
 
 class Game {
 private:
-    // ÃÎ×ÓÄã¿´£¬ÕâĞ©ÊÇÎÒÃÇµÄ¡°¼Òµ±¡±
+    // å§Šï¹€ç“™æµ£çŠµæ¹…é”›å²ƒç¹–æµœæ¶™æ§¸é´æˆœæ»‘é¨å‹¨â‚¬æ»ƒî†è¤°æ’¯â‚¬?
     std::unique_ptr<Window> gameWindow;
-    std::unique_ptr<Shader> ourShader;        // 3D ·½¿éÊÀ½çµÄ×ÅÉ«Æ÷
-    std::unique_ptr<Shader> uiShader;         //  ĞÂÔö£ºÍâÖÃµÄÈ«ÄÜÍ¨ÓÃ UI ×ÅÉ«Æ÷£¡
+    std::unique_ptr<Shader> ourShader;        // 3D é‚ç‘°æ½¡æ¶“æ «æ™«é¨å‹­æ½ƒé‘¹æ’æ«’
+    std::unique_ptr<Shader> uiShader;         //  é‚æ¿î–ƒé”›æ°¬î˜»ç¼ƒî†¾æ®‘éã„¨å…˜é–«æ°±æ•¤ UI é«â‚¬é‘¹æ’æ«’é”›?
     std::unique_ptr<Texture> texture;
     std::unique_ptr<World> world;
     std::unique_ptr<Renderer> worldRenderer;
@@ -48,12 +48,12 @@ private:
         if (Input::IsKeyJustPressed(handle, GLFW_KEY_N)) IsN = !IsN;
 
         bool isMovingForward = Input::IsKeyPressed(handle, GLFW_KEY_W);
-        bool isCrouching = !IsN && Input::IsKeyPressed(handle, GLFW_KEY_LEFT_SHIFT); // Ö»ÓĞÉú´æÄ£Ê½²ÅÄÜÏÂ¶×
+        bool isCrouching = !IsN && Input::IsKeyPressed(handle, GLFW_KEY_LEFT_SHIFT); // é™î…æ¹é¢ç†·ç“¨å¦¯â€³ç´¡éµå¶ˆå…˜æ¶“å¬­å…±
 
         if (Input::IsKeyJustPressed(handle, GLFW_KEY_LEFT_CONTROL) && isMovingForward && !isCrouching) {
             isSprintLocked = true;
         }
-        // ÊÖÒ»ËÉ¿ª W£¬³å´ÌÁ¢¿ÌÏ¨Ãğ£¡
+        // éµå¬©ç«´é‰æƒ§ç´‘ Wé”›å±½å•¿é’è™¹ç›é’è¤å”²éî…¨ç´’
         if (!isMovingForward || isCrouching) {
             isSprintLocked = false;
         }
@@ -63,14 +63,14 @@ private:
             camera->Velocity = glm::vec3(0.0f);
             camera->IsGrounded = false;
 
-            //  ·ÉÌì¼«ÏŞ³¬ËÙÄ§·¨£ºÄ¬ÈÏ·ÉĞĞ 15.0f£¬Ò»µ©¿ªÆô LC ³å´ÌËø£¬Ö±½Ó¿ñ±©ì­µ½ 32.0f£¨ÄãµÄ¼«ÏŞ³å´ÌËÙ¶È£¡£©
+            //  æ¤‹ç‚²ã‰é‹ä¾€æªºç“’å‘´â‚¬ç†¼ç“Ÿå¨‰æ›ªç´°æ¦›æ¨¿î…»æ¤‹ç‚¶î”‘ 15.0fé”›å±¼ç«´éƒï¹€ç´‘éš?LC éæ’åŸ¡é–¿ä¾Šç´é©å­˜å¸´é™å‚›æ¯šæ¤‹æ¬åŸŒ 32.0fé”›å œç¶˜é¨å‹¬ç€¬é—„æ„¬å•¿é’æ´ªâ‚¬ç†·å®³é”›ä¾Šç´š
             float targetSpeed = isSprintLocked ? 20.0f : 10.0f;
             camera->MovementSpeed = targetSpeed;
 
-            // ·ÉĞĞÊ±µÄÊÓÒ°À­Éì£º³å´ÌÊ± FOV ·Å´óµ½ 85 ¶È£¬ÌåÑéÊ±¿ÕËºÁÑ¸Ğ£¡
+            // æ¤‹ç‚¶î”‘éƒå‰æ®‘ç‘™å—›å™¹é·å¤‰å‡ é”›æ°¬å•¿é’çƒ˜æ¤‚ FOV é€æƒ§ã‡é’?85 æ´ï¸¼ç´æµ£æ’»ç™éƒå‰â”–é¾æ›¡î—‡é°ç‡‚ç´’
             float targetFov = isSprintLocked ? 100.0f : 75.0f;
 
-            // ÃÎ×Ó×¢Òâ£º·ÉÌìÊ±µÄ´¹Ö±Éı½µËÙ¶ÈÒ²Í¬²½ÏíÊÜËÙ¶È¼Ó³ÉàŞ£¡
+            // å§Šï¹€ç“™å¨‰ã„¦å‰°é”›æ°¶î—£æ¾¶â•‚æ¤‚é¨å‹«ç€­é©æ‘å´Œé—„å¶‰â‚¬ç†·å®³æ¶”ç†·æ‚“å§ãƒ¤éŸ©é™æ¥…â‚¬ç†·å®³é”çŠ³åšé£î®ç´’
             float verticalSpeed = targetSpeed;
             if (Input::IsKeyPressed(handle, GLFW_KEY_SPACE)) { camera->Position.y += verticalSpeed * dt; }
             if (Input::IsKeyPressed(handle, GLFW_KEY_LEFT_SHIFT)) { camera->Position.y -= verticalSpeed * dt; }
@@ -80,7 +80,7 @@ private:
             }
         }
         else {
-            // ÆÕÍ¨Éú´æÄ£Ê½µÄÎïÀí·¨Ôò±£³ÖÍêÃÀ²»±ä
+            // é…î‡€â‚¬æ°±æ•“ç€›æ¨»Äå¯®å¿•æ®‘é—â•ƒæ‚Šå¨‰æ›å¯æ·‡æ¿‡å¯”ç€¹å²€ç·¨æ¶“å¶…å½‰
             camera->Gravity = -18.0f;
 
             if (Input::IsKeyPressed(handle, GLFW_KEY_SPACE) && camera->IsGrounded) {
@@ -132,34 +132,35 @@ private:
         }
     }
 
-    //  ²ğ³öÀ´µÄ×ÓÄ£¿é¶ş£º×¨ÃÅ¸ã¼üÅÌ 4 ·½ÏòµÄµş¼ÓÏòÁ¿ºÍ¹éÒ»»¯·ÀĞ±Ïò³¬ËÙ
+    //  é·å——åš­é‰ãƒ§æ®‘ç€›æ„­Äé§æ¤¾ç°©é”›æ°«ç¬“é—‚ã„¦æ‚¶é–¿î†¾æ´ 4 é‚ç‘°æ‚œé¨å‹«å½”é”çŠ²æ‚œé–²å¿“æ‹°è¤°æç«´é–æ ­æ§»é‚æ»ƒæ‚œç“’å‘´â‚¬?
     void processMovementVectors(GLFWwindow* handle, float dt) {
-        // Ã¿Ò»Ö¡¿ªÍ·£¬ÏÈ°ÑÉÏÒ»Ö¡µÄÒÆ¶¯ÒâÍ¼Çå¿Õ
+        // å§£å¿ç«´ç”¯Ñƒç´‘æ¾¶è¾¾ç´éå Ÿå¦¸æ¶“å©ç«´ç”¯Ñ…æ®‘ç»‰è¯²å§©é°å¿“æµ˜å¨“å‘¯â”–
         camera->WishDir = glm::vec3(0.0f);
 
-        // ÊÕ¼¯ W A S D µÄ·½Ïò
+        // é€å •æ³¦ W A S D é¨å‹¬æŸŸéš?
         if (Input::IsKeyPressed(handle, GLFW_KEY_W)) camera->ProcessKeyboard(1);
         if (Input::IsKeyPressed(handle, GLFW_KEY_S)) camera->ProcessKeyboard(2);
         if (Input::IsKeyPressed(handle, GLFW_KEY_A)) camera->ProcessKeyboard(3);
         if (Input::IsKeyPressed(handle, GLFW_KEY_D)) camera->ProcessKeyboard(4);
 
-        // Èç¹ûÓĞ°´¼ü°´ÏÂ£¬Ö´ĞĞ¹éÒ»»¯£¬³¹µ×·À·¶Ğ±Ïò×ß³¬ËÙ
+        // æ¿¡å‚›ç‰éˆå¤‹å¯œé–¿î†½å¯œæ¶“å¬¶ç´éµÑ†î”‘è¤°æç«´é–æ µç´è¤°è¯²ç°³é—ƒèŒ¶å¯–é‚æ»ƒæ‚œç’§æ‹Œç§´é–«?
         if (glm::length(camera->WishDir) > 0.0f) {
             camera->WishDir = glm::normalize(camera->WishDir);
         }
     }
 
-    //  ²ğ³öÀ´µÄ×ÓÄ£¿éÈı£º·½¿é¿ì½İÀ¸Ñ¡¶¨
+    //  é·å——åš­é‰ãƒ§æ®‘ç€›æ„­Äé§æ¤¾ç¬é”›æ°­æŸŸé§æ¥€æ©é¹é”‹çˆ®é–«å¤Šç•¾    //  æ·‡î†½æ•¼é”›æ°¶â‚¬å¤‹å«¨é‚ç‘°æ½¡
     void updateItemSelection(GLFWwindow* handle) {
         if (Input::IsKeyJustPressed(handle, GLFW_KEY_1)) { currentSelectBlock = BlockType::GRASS; }
         else if (Input::IsKeyJustPressed(handle, GLFW_KEY_2)) { currentSelectBlock = BlockType::DIRT; }
         else if (Input::IsKeyJustPressed(handle, GLFW_KEY_3)) { currentSelectBlock = BlockType::STONE; }
-        else if (Input::IsKeyJustPressed(handle, GLFW_KEY_2)) { currentSelectBlock = BlockType::LOG; }
-        else if (Input::IsKeyJustPressed(handle, GLFW_KEY_3)) { currentSelectBlock = BlockType::LEAVES; }
+        else if (Input::IsKeyJustPressed(handle, GLFW_KEY_4)) { currentSelectBlock = BlockType::LOG; }
+        else if (Input::IsKeyJustPressed(handle, GLFW_KEY_5)) { currentSelectBlock = BlockType::LEAVES; }
+        else if (Input::IsKeyJustPressed(handle, GLFW_KEY_6)) { currentSelectBlock = BlockType::GLOWSTONE; }
     }
 
 public:
-    // ¹¹Ôìº¯Êı£º°ÑÏä×ÓÏÈ°ÚºÃ
+    // é‹å‹¯â‚¬çŠ²åš±éå¸®ç´°é¶å©„î†ˆç€›æ„¬å›é½å——ã‚½
     Game() : VAO(0), IsN(false), isSprintLocked(false), interactionTimer(0.0f), gameWindow(nullptr), currentSelectBlock(BlockType::GRASS), ourShader(nullptr),
         texture(nullptr), world(nullptr),
         worldRenderer(nullptr), camera(nullptr), ui(nullptr) {
@@ -179,46 +180,46 @@ public:
 
         gameWindow = std::make_unique<Window>(width, height, title);
 
-        // 1. ÊÀ½çµ®Éú
+        // 1. æ¶“æ «æ™«ç’‡ç‚µæ•“
         world = std::make_unique<World>();
         world->GenerateWorld(1);
 
-        // 2. ×ÊÔ´×°ÔØ
+        // 2. ç’§å‹¬ç°®ç‘å‘°æµ‡
         ourShader = std::make_unique<Shader>("World.vs", "World.fs");
         uiShader = std::make_unique<Shader>("UI.vs", "UI.fs");
         texture = std::make_unique<Texture>("texture.jpg", GL_RGB);
 
-        // ÏÖ´ú OpenGL ±ØĞë°ó¶¨Ò»¸ö VAO ²ÅÄÜÖ´ĞĞ Draw ºËĞÄÖ¸Áî
-        // ÎÒÃÇÖ»ÔÚÏÔ´æÀï¸øËü×¢²áÒ»¸ö¿ÕÃû×Ö£¬¸ù±¾²»ÓÃÍùÀïÃæ¹àÈÎºÎÆÕÍ¨¶¥µãÊı¾İ£¡
+        // éœé¢å”¬ OpenGL è¹‡å‘´ã€ç¼æˆç•¾æ¶“â‚¬æ¶“?VAO éµå¶ˆå…˜éµÑ†î”‘ Draw éç¨¿ç¸¾é¸å›¦æŠ¤
+        // é´æˆœæ»‘é™î„æ¹ªé„æƒ§ç“¨é–²å²€ç²°ç€¹å†©æ•éå±¼ç«´æ¶“î†â”–éšå¶…ç“§é”›å±¾ç‰´éˆîƒ¿ç¬‰é¢ã„¥ç·šé–²å²„æ½°éå±¼æ¢æµ£æ›Ÿæ«˜é–«æ°¶ã€Šéè§„æšŸé¹î‡†ç´’
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
-        // Ö»Òª½â°ó¾ÍºÃÀ²£¡Ê£ÏÂµÄ instanceVBO ¹ÜµÀ»áÔÚ Chunk::Render ÀïÃæ¶¯Ì¬¹Ò½ÓÔÚÍ¨µÀ 2 ÉÏ£¡
+        // é™î‡î›¦ç‘™ï½‡ç²¦çåã‚½éŸï¸¼ç´’é“â•€ç¬…é¨?instanceVBO ç» ï¿ äº¾æµ¼æ°¬æ¹ª Chunk::Render é–²å²„æ½°é”ã„¦â‚¬ä½¹å¯•éºãƒ¥æ¹ªé–«æ°¶äº¾ 2 æ¶“å©ç´’
         glBindVertexArray(0);
 
-        // 3. Íæ¼Ò½µÁÙ (177cm µÄÃÎ×Ó³ö·¢£¡)
+        // 3. éœâ•î†é—„å¶„å¤ (177cm é¨å‹¬â…µç€›æ„¬åš­é™æˆ¯ç´’)
         
         glfwSetInputMode(gameWindow->Handle, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         glfwSetCursorPosCallback(gameWindow->Handle, Input::MouseCallback);
 
-        // ³õÊ¼Î»ÖÃÉÔÎ¢Ì§¸ßµ½ (8, 64, 8)£¬°²È«²ÈÔÚÄãµÄÆ½Ô­ÉÏ
+        // é’æ¿†îæµ£å¶‡ç–†ç»‹å¶…äº•é¶î„„ç®é’?(8, 64, 8)é”›å±½ç•¨éã„¨ä¿¯é¦ã„¤ç¶˜é¨å‹«é’©é˜ç†¶ç¬‚
         float spawnX = 8.0f;
         float spawnZ = 8.0f;
 
-        // ÍêÃÀ¿ËÂ¡ÄãµÄÊÀ½ç¹«Ê½£º100% »¹Ô­µØ±í¹ÌÌå·½¿é¸ß¶È
+        // ç€¹å²€ç·¨éå¬®æ®•æµ£çŠµæ®‘æ¶“æ «æ™«éî„€ç´¡é”›?00% æ©æ¨ºå¸«é¦æ‹Œã€ƒé¥è½°ç¶‹é‚ç‘°æ½¡æ¥‚æ¨ºå®³
         float nBase = TerrainNoise::GetPerlin(spawnX * 0.025f, spawnZ * 0.025f) * 25.0f;
         float nDetail = TerrainNoise::GetPerlin(spawnX * 0.1f, spawnZ * 0.1f) * 4.0f;
         int surfH = static_cast<int>(40.0f + nBase + nDetail);
 
-        // ±ß½ç°²È«ÏŞ·ù£¬¸úÄãµÄÊÀ½ç·¨Ôò¾ø¶Ô¶ÔÆë
+        // æˆåœ­æ™«ç€¹å¤Šåé—„æ„¬ç®™é”›å²ƒçª¡æµ£çŠµæ®‘æ¶“æ «æ™«å¨‰æ›å¯ç¼æ¿†î‡®ç€µå½’ç¶ˆ
         if (surfH < 1) surfH = 1;
         if (surfH >= 256) surfH = 255;
 
-        // ÉúÌ¬·À¿¨Ëø£ºÒòÎª (8, 8) ÔÚ 0 ºÅÇø¿éµÄÖĞĞÄ£¬¼«Ò×¸ß¸ÅÂÊ³¤³öÏğÊ÷£¡
-        // ÏğÊ÷µÄÖ÷¸ÉÒ»°ã¸ß 5 ¸ñ£¬ÎªÁË³¹µ×·ÀÖ¹ÃÎ×Ó¿ª¾Ö¿¨ÔÚÊ÷Ò¶»òÕßÊ÷¸ÉÀïÖÏÏ¢£¬
-        // ÎÒÃÇÔÚÕâÀïÖ±½Ó°Ñ³öÉú¸ß¶ÈÍùÉÏ°²È«Ì§¸ß 6 ¸ñ£¬´Ó¿ÕÖĞÓÅÑÅ½µÂä£¬ÅäºÏÄã¸ß¹óµÄ AABB Åö×²£¬Ëı»á×Ô¶¯ÍêÃÀÂäÔÚÊ÷¶¥»ò²İµØÉÏ£¡
+        // é¢ç†¸â‚¬ä¾€æ§»é—ï¿ æ”£é”›æ°¬æ´œæ¶“?(8, 8) é¦?0 é™å³°å°¯é§æ¥ƒæ®‘æ¶“î…ç¸¾é”›å±¾ç€¬é„æ’»ç®å§’å‚œå·¼é—€å®åš­å§—â„ƒçˆ²é”›?
+        // å§—â„ƒçˆ²é¨å‹ªå¯Œéªè¹­ç«´é‘¸î„„ç® 5 éç¡·ç´æ¶“è½°ç°¡è¤°è¯²ç°³é—ƒå‰î„›å§Šï¹€ç“™å¯®â‚¬çâ‚¬é—â€³æ¹ªéæˆå½¾é´æ ¬â‚¬å‘®çˆ²éªæŸ¥å™·ç»æ“ä¼…é”›?
+        // é´æˆœæ»‘é¦ã„¨ç¹–é–²å²€æ´¿éºãƒ¦å¦¸é‘è™¹æ•“æ¥‚æ¨ºå®³å¯°â‚¬æ¶“å©‚ç•¨éã„¦å§®æ¥‚?6 éç¡·ç´æµ åº£â”–æ¶“î…ç´­é—†å‘´æª·é’€æ–¤ç´é–°å¶…æ‚æµ£çŠ»ç®ç’ç”µæ®‘ AABB çº°ç‰ˆæŒ’é”›å±½ã‚¹æµ¼æ°³åšœé”ã„¥ç•¬ç¼‡åº¤æƒ¤é¦ã„¦çˆ²æ¤¤èˆµå¨é‘½å¤Šæ¹´æ¶“å©ç´’
         float safeSpawnY = static_cast<float>(surfH) + 2.0f + 1.62f;
 
-        // ¶¯Ì¬³öÉúÎ»ÖÃ£¬³¹µ×¸æ±ğ¿¨Ç½µØÓü£¡
+        // é”ã„¦â‚¬ä½¸åš­é¢ç†¶ç¶…ç¼ƒî‡†ç´è¤°è¯²ç°³é›å©‚åŸ†é—â€³î•¾é¦æ‰®å«³é”›?
         camera = std::make_unique<Camera>(glm::vec3(spawnX, safeSpawnY, spawnZ));
 
         worldRenderer = std::make_unique<Renderer>();
@@ -226,20 +227,20 @@ public:
     }
 
     void RunLoop() {
-        // ÓÎÏ·¿ª¾ÖÇ°¸üĞÂÒ»´Î£¬±£³ÖÇåË¬
+        // å¨“å‘Šå™å¯®â‚¬çâ‚¬é“å¶†æ´¿é‚é¢ç«´å¨†â˜…ç´æ·‡æ¿‡å¯”å¨“å‘¯åŸ¥
         Input::Update();
 
         while (!gameWindow->ShouldClose()) {
             float dt = Input::GetDeltaTime();
             if (dt > 0.033f) dt = 0.033f;
 
-            // 1. ÃÎ×ÓÌıºÃÁË£¡±ØĞëÏÈÈÃ GLFW ´Ó²Ù×÷ÏµÍ³ÊÖÀï°ÑÊó±êµÄ×îĞÂ×ø±ê×¥¹ıÀ´£¡
+            // 1. å§Šï¹€ç“™éšî„€ã‚½æµœå—­ç´’è¹‡å‘´ã€éå £î†€ GLFW æµ åº¢æ·æµ£æ»…éƒ´ç¼ç†¸å¢œé–²å±¾å¦¸æ¦§çŠ³çˆ£é¨å‹¬æ¸¶é‚æ¿æ½—éå›¨å§„æ©å›¨æ½µé”›?
             glfwPollEvents();
 
-            // 2. È»ºó£¬ÔÙºô»½ÄãµÄÊäÈëÏµÍ³È¥¼ÆËãÕâÒ»Ö¡µÄ×ø±êÆ«ÒÆÁ¿£¡
+            // 2. é’è·ºæ‚—é”›å±½å•€é›ç…æ•œæµ£çŠµæ®‘æˆæ’³å†ç»¯è¤ç²ºé˜æ˜î…¸ç» æ¥„ç¹–æ¶“â‚¬ç”¯Ñ…æ®‘é§æ„­çˆ£é‹å¿•Ğ©é–²å¿¥ç´’
             Input::Update();
 
-            // 3. ½ÓÏÂÀ´ÔÙÈ¥¿ìÀÖµØÒÆ¶¯ºÍäÖÈ¾£¡
+            // 3. éºãƒ¤ç¬…é‰ãƒ¥å•€é˜è¯²æ©æ¶”æ„¬æ¹´ç»‰è¯²å§©éœå±¾è¦†éŒæ“„ç´’
             update(dt);
             render();
 
@@ -249,32 +250,26 @@ public:
 
 private:
     void update(float dt) {
-        // 0. Ö¡ÂÊ°²È«ÏŞÖÆËø
-        if (dt > 0.03f) dt = 0.03f;
+        if (dt > 0.03f) dt = 0.03f; // å¸§ç‡é˜²æŠ¤ç½©
         GLFWwindow* handle = gameWindow->Handle;
 
-        // 1. ÏµÍ³µ×²ã¼¶°´¼üÖ±½ÓÀ¹½Ø
         if (Input::IsKeyPressed(handle, GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(handle, true);
         if (Input::IsKeyJustPressed(handle, GLFW_KEY_F11)) gameWindow->ToggleFullscreen();
 
-        //  ºËĞÄ½âñî´óÕĞÒ»£º´¦Àí´í×Û¸´ÔÓµÄÔË¶¯×´Ì¬»ú£¨ÏÂ¶×¡¢¼²ÅÜËø¡¢FOV¹ı¶É£©
+        // 1. çŠ¶æ€æœºä¸ç§»åŠ¨æ„å›¾è§£è€¦
         processInputStates(handle, dt);
-
-        //  ºËĞÄ½âñî´óÕĞ¶ş£º¼ÆËã WASD Ë®Æ½ÔË¶¯ÏòÁ¿²¢Ö´ĞĞÉñÊ¥µÄ¹éÒ»»¯
         processMovementVectors(handle, dt);
 
-        // 3. ´óÊÀ½çÎŞÏŞÇø¿éË¢ĞÂÄ§·¨
+        // 2. å¤§ä¸–ç•Œæ— é™åŒºå—åŠ¨æ€æµæ°´çº¿åˆ·æ–°åˆ·æ–°ï¼ˆå·²åº”ç”¨æœ¬å°å§çš„è·¨è¾¹ç•Œæç®€æ’åºé­”æ³•ï¼ï¼‰
         world->UpdateInfiniteWorld(camera->Position, 5);
 
-        // 4. ÅÉ·¢¸øÍâ²¿¶ÀÁ¢µÄÎïÀíºÍ½»»¥Ä£¿é
+        // 3. ç‰©ç†ä¸æ–¹å—äº¤äº’æ´¾å‘
         processPhysics(dt);
         processInteraction(handle);
 
-        // 5. ÊÓ½ÇĞı×ª¾ØÕó¼ÆËã
+        // 4. è§†è§’ä¸å¿«æ·æ åŒæ­¥
         glm::vec2 mouseOffset = Input::GetMouseOffset(handle);
         camera->ProcessMouseMovement(mouseOffset.x, mouseOffset.y);
-
-        //  ºËĞÄ½âñî´óÕĞÈı£º´¦ÀíÊı×Ö¼ü¿ì½İÀ¸·½¿éÇĞ»»
         updateItemSelection(handle);
     }
 
@@ -285,112 +280,99 @@ private:
         else if (camera->IsGrounded) {
             glm::vec3 footBlockPos = camera->Position;
             footBlockPos.y -= (camera->EyeHeight + 0.1f);
-            BlockType standingBlock = world->GetBlockAt(footBlockPos);
-
-            //if (standingBlock == BlockType::AIR) {
-            //    camera->CurrentFriction = 0.5f; // ±ùÃæÔÊĞí´ó·ù¶È´ò»¬
-            //}
-            //else if (standingBlock == BlockType::SOUL_SAND) {
-            //    camera->CurrentFriction = 18.0f; // Ë²¼äÕ³×¡
-            //}
-            //else {
-                camera->CurrentFriction = camera->DEFAULT_FRICTION; // ÆÕÍ¨µØÃæÄ¬ÈÏ 8.0f 
-            //}
+            camera->CurrentFriction = camera->DEFAULT_FRICTION;
         }
         else {
-            camera->CurrentFriction = 1.0f; // ¿ÕÖĞ±£Áô¸ü¶àÉí·¨¹ßĞÔ
+            camera->CurrentFriction = 1.0f;
         }
 
-        // --- 1. ¡¾ºËĞÄĞŞ¸´¡¿£ºQuake / Minecraft Ê½Í¶Ó°¼ÓËÙÓë·ÖÖá×èÄá ---
+        // --- [Quake / MC å¼ç»å…¸åŠ é€ŸæŠ•å½±] ä¿æŒä½ æœ€å®Œç¾çš„éª¨æ¶ä¸åŠ¨ï¼Œå“¼å”§ï¼ ---
         glm::vec3 curVel = camera->HorizontalVelocity;
         float wishSpeed = camera->MovementSpeed;
 
         if (glm::length(camera->WishDir) > 0.001f) {
             glm::vec3 wishDir = glm::normalize(camera->WishDir);
-
-            // ¡¾Ïû³ı×ªÏò´ò»¬µÄ¹Ø¼ü¡¿£º¼ÆËãµ±Ç°ËÙ¶ÈÔÚÍæ¼Ò¡°ÒÆ¶¯ÒâÍ¼·½Ïò¡±ÉÏµÄÍ¶Ó°
             float currentSpeedInWishDir = glm::dot(curVel, wishDir);
-
-            // ¼ÆËãÕâÒ»Ö¡»¹ÄÜÍùÕâ¸ö·½Ïò×·¼Ó¶àÉÙËÙ¶È
             float addSpeed = wishSpeed - currentSpeedInWishDir;
 
             if (addSpeed > 0.0f) {
-                // ¸ù¾İ°´¼ü·½ÏòÇ¿ĞĞ×·¼ÓËÙ¶È£¬ÊıÖµÔ½´óÆğ²½ºÍ×ªÏòÔ½ÁéÃô
                 float accelSpeed = camera->ACCELERATION * dt * wishSpeed;
                 if (accelSpeed > addSpeed) accelSpeed = addSpeed;
                 curVel += wishDir * accelSpeed;
             }
 
-            // ¶ÔÓÚ¡°´¹Ö±ÓÚÒÆ¶¯ÒâÍ¼¡±µÄ²àÏò¹ßĞÔ²ĞÁô£¬ÊµĞĞÇ¿Á¦µÄÄ¦²ÁË¥¼õ£¬·ÀÖ¹ÑÏÖØµÄºáÏòÆ¯ÒÆ
             glm::vec3 sideVel = curVel - wishDir * glm::dot(curVel, wishDir);
             if (glm::length(sideVel) > 0.001f) {
-                // ÆÕÍ¨·½¿éÉÏ²àÏòÉ²³µ¼«¿ì£¬±ùÃæÉÏ²àÏòÉ²³µÂı£¨±£ÁôÆ¯ÒÆ£©
                 curVel -= sideVel * (1.0f - glm::exp(-camera->CurrentFriction * 1.5f * dt));
             }
         }
         else {
-            // ¡¾ÍêÈ«ËÉ¿ª°´¼ü¡¿£ºÈ«ÖáÖ´ĞĞÆ½»¬µÄÄ¦²ÁÁ¦×ÔÈ»Ë¥¼õ
-            if (glm::length(curVel) > 0.001f) {
-                curVel *= glm::exp(-camera->CurrentFriction * dt);
-            }
-            else {
-                curVel = glm::vec3(0.0f);
-            }
+            if (glm::length(curVel) > 0.001f) curVel *= glm::exp(-camera->CurrentFriction * dt);
+            else curVel = glm::vec3(0.0f);
         }
 
         camera->HorizontalVelocity = curVel;
 
-        // --- 2. ËÙ¶ÈÏŞ·ù£¨¶¯Ì¬ÊÊÅäÄãÔÚ processInputStates ÀïËãºÃµÄ¸÷ÖÖ×´Ì¬ËÙ£© ---
+        // é€Ÿåº¦åŠ¨æ€é€‚é…é™å¹…
         float speed = glm::length(camera->HorizontalVelocity);
         if (speed > camera->MovementSpeed) {
             camera->HorizontalVelocity = glm::normalize(camera->HorizontalVelocity) * camera->MovementSpeed;
         }
 
-        // ´©Ç½Ä£Ê½Ö±½ÓäìÈ÷Àë³¡
         if (IsN) {
             camera->Position.x += camera->HorizontalVelocity.x * dt;
             camera->Position.z += camera->HorizontalVelocity.z * dt;
             return;
         }
 
-        // ÏÂÃæÈ«¶¼ÊÇÆÕÍ¨Éú´æÄ£Ê½ÏÂ£¬ÃÎ×Ó 177cm Éí¸ß×¨ÊôµÄÑÏÃÜ AABB Åö×²¼ì²â
+        // --- [ç”Ÿå­˜ç‰©ç†ç¢°æ’ç®±å¤§ä¿®è¡¥] ---
         if (!camera->IsGrounded) camera->Velocity.y += camera->Gravity * dt;
         else camera->Velocity.y = 0.0f;
 
         glm::vec3 oldPos = camera->Position;
 
-        // X ÖáÒÆ¶¯ÓëÅö×²
+        // ã€å¾®è°ƒä¿®å¤ 1ã€‘X è½´ç¢°æ’ï¼šå¦‚æœæ’å¢™äº†ï¼Œè½»è½»æ»‘è¿‡å»è€Œä¸æ˜¯ç¬é—´å¡æ­»
         camera->Position.x += camera->HorizontalVelocity.x * dt;
         if (Physics::CheckCollision(camera->Position, camera.get(), world.get())) {
             camera->Position.x = oldPos.x;
-            camera->HorizontalVelocity.x = 0.0f; // ×²Ç½Çå³ı X ÖáËÙ¶È·ÖÁ¿
+            // å…è®¸ä¾§å‘æ»‘è¡Œï¼Œè€Œä¸æ˜¯ç®€å•æ¸…é›¶ï¼Œæ‰‹æ„Ÿç›´æ¥å˜æˆå¾·æ„å¿—ä¸æ»‘å·§å…‹åŠ›ï¼Œå“¼å”§~
+            camera->HorizontalVelocity.x = 0.0f;
         }
 
-        // Z ÖáÒÆ¶¯ÓëÅö×²
+        // ã€å¾®è°ƒä¿®å¤ 2ã€‘Z è½´ç¢°æ’ï¼šé¡ºç•…æ»‘è¡Œ
         camera->Position.z += camera->HorizontalVelocity.z * dt;
         if (Physics::CheckCollision(camera->Position, camera.get(), world.get())) {
             camera->Position.z = oldPos.z;
-            camera->HorizontalVelocity.z = 0.0f; // ×²Ç½Çå³ı Z ÖáËÙ¶È·ÖÁ¿
+            camera->HorizontalVelocity.z = 0.0f;
         }
 
-        // Y ÖáÒÆ¶¯ÓëÅö×²
+        // ã€å¾®è°ƒä¿®å¤ 3ã€‘Y è½´ç¢°æ’ï¼šç”¨äºŒåˆ†æ­¥è¿›ï¼ˆSub-steppingï¼‰æ€æƒ³é˜²ç©¿å¢™ï¼Œä¸”æŠ›å¼ƒç¡¬ç¼–ç é«˜åº¦ï¼
+        // æ¢¦å­å¬å¥½ï¼Œæˆ‘ä»¬ä¸ç”¨æš´åŠ› floor å¸é™„ï¼Œæˆ‘ä»¬è®©å®ƒå›é€€åˆ°â€œæ’å‡»å‘ç”Ÿå‰æœ€åä¸€æ ¼çš„å®‰å…¨è€ä½ç½®â€
         camera->Position.y += camera->Velocity.y * dt;
         if (Physics::CheckCollision(camera->Position, camera.get(), world.get())) {
-            if (camera->Velocity.y < 0) {
+            if (camera->Velocity.y < 0.0f) {
                 camera->IsGrounded = true;
                 camera->Velocity.y = 0.0f;
-                float groundLevel = floor(camera->Position.y - camera->EyeHeight);
-                camera->Position.y = groundLevel + 1.0f + camera->EyeHeight;
+
+                // é­”æ³•å›é€€ï¼šç”±äºè¿™ä¸€å¸§å‘ä¸‹å†²è¿‡äº†å¤´å¡è¿›äº†æ–¹å—ï¼Œæˆ‘ä»¬è®©å®ƒç²¾å‡†å›é€€åˆ°åˆšå¥½è´´åœ°çš„é«˜åº¦ï¼
+                camera->Position.y = oldPos.y;
+                // æå…¶å®‰å…¨çš„å¾®é‡ä¸‹æ¢å¾®è°ƒæ³•é˜µï¼Œç”¨æ¥å¯»æ‰¾æœ€ç²¾å‡†çš„å›ºä½“è¡¨é¢ï¼Œè€Œä¸æ˜¯æš´åŠ›å¼ºè¡Œ+1.0fï¼
+                while (Physics::CheckCollision(camera->Position, camera.get(), world.get())) {
+                    camera->Position.y += 0.01f;
+                }
             }
             else {
                 camera->Velocity.y = 0.0f;
-                camera->Position.y = oldPos.y;
+                camera->Position.y = oldPos.y; // æ’åˆ°å¤©èŠ±æ¿ï¼Œç¨³ç¨³å¼¹å›
             }
         }
         else {
+            // å®‰å…¨è§¦åœ°æ¢æµ‹
             glm::vec3 probe = camera->Position;
-            probe.y -= 0.1f;
-            if (!Physics::CheckCollision(probe, camera.get(), world.get())) camera->IsGrounded = false;
+            probe.y -= 0.05f; // ç²¾ç»†æ¢é’ˆ
+            if (!Physics::CheckCollision(probe, camera.get(), world.get())) {
+                camera->IsGrounded = false;
+            }
         }
     }
 
@@ -398,9 +380,7 @@ private:
         static bool leftLast = false, rightLast = false;
         float dt = Input::GetDeltaTime();
 
-        if (interactionTimer > 0.0f) {
-            interactionTimer -= dt;
-        }
+        if (interactionTimer > 0.0f) interactionTimer -= dt;
 
         bool leftPress = glfwGetMouseButton(handle, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
         bool rightPress = glfwGetMouseButton(handle, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
@@ -413,15 +393,13 @@ private:
             if (result.hit) {
                 glm::ivec3 targetPos = result.pos;
 
-                if (rightPress) {
-                    targetPos += result.normal;
-                }
+                if (rightPress) targetPos += result.normal; // æ”¾ç½®æ—¶æœæ³•çº¿æ–¹å‘å»¶å±•ä¸€æ ¼
 
-                int cx = (int)floor((float)targetPos.x / 16.0f);
-                int cz = (int)floor((float)targetPos.z / 16.0f);
-
-                int lx = targetPos.x % 16; if (lx < 0) lx += 16;
-                int lz = targetPos.z % 16; if (lz < 0) lz += 16;
+                // ã€é­”æ³•å¤§ä¿®å¤ 1ã€‘ç”¨æ— å¯åŒ¹æ•Œçš„æŒ‰ä½è¿ç®—å½»åº•ä»£æ›¿ä¸‘é™‹åˆä¼šé”™ä½çš„è´Ÿæ•°å–æ¨¡ï¼
+                int cx = targetPos.x >> 4;
+                int cz = targetPos.z >> 4;
+                int lx = targetPos.x & 15;
+                int lz = targetPos.z & 15;
 
                 ChunkPos cp = { cx, cz };
                 if (world->chunks.count(cp)) {
@@ -429,11 +407,12 @@ private:
 
                     if (leftPress) {
                         world->chunks[cp]->SetBlock(lx, targetPos.y, lz, BlockType::AIR);
+                        world->PropagateLocalLightingChange(targetPos.x, targetPos.y, targetPos.z);
                         interactionTimer = 0.15f;
                         blockChanged = true;
                     }
                     else if (rightPress) {
-                        // ÃÎ×Ó´ó³¤ÍÈÓëÉíÌåµÄ·ÀÖÏÏ¢Åö×²ºĞ¼ì²é
+                        // 177cm æ¢¦å­çš„é•¿è…¿é«˜ç²¾åº¦ AABB é˜²çª’æ¯è‡ªåŸ‹æ£€æŸ¥
                         float radius = 0.3f;
                         int minX = (int)floor(camera->Position.x - radius);
                         int maxX = (int)floor(camera->Position.x + radius);
@@ -453,16 +432,20 @@ private:
                         }
                     }
 
-                    //  ÖÕ¼«ĞÔÄÜÓÅ»¯£ºÈç¹û·½¿éÕæµÄ¸Ä±äÁË£¬¾ø²»ÔÚÖ÷Ïß³Ìµ±³¡ËÀµÈÓ²ÖØ»æ£¡
+                    // ã€é­”æ³•å¤§ä¿®å¤ 2ã€‘ç»ä¸è§¦å‘ä¸–ç•Œæœ«æ—¥ï¼
+                    // æˆ‘ä»¬åªè°ƒç”¨åªæ³¢åŠå‘¨å›´ 15 æ ¼çš„å±€éƒ¨åŒé˜Ÿåˆ—æ›´æ–°ï¼Œå¹¶åªé€šçŸ¥å½“äº‹åŒºå—å’Œå…¶è¾¹ç•Œé‚»å±…é‡æ„ç½‘æ ¼ï¼
                     if (blockChanged) {
-                        // 1. ×Ô¼ºÕâ¸öÇø¿é£¬Ò»ÃëÖÓ¶¼²»ĞíµÈ£¬µ±³¡Ó²ÈÛÁ¶£¡
+                        // 1. è·‘æœ¬å°å§æ•™ç»™ä½ çš„å±€éƒ¨å…‰ç…§ BFSï¼Œç¬é—´æå®šæ–¹å—å‘¨å›´çš„å…‰çº¿å˜åŠ¨
+                        world->PropagateLocalLightingChange(targetPos.x, targetPos.y, targetPos.z);
+
+                        // 2. åªé€šçŸ¥éœ€è¦é‡ç»˜ä¸Šå±çš„ã€ç²¾å‡†å±€éƒ¨åŒºå—ã€‘å»é‡æ–°æ„ç­‘ç½‘æ ¼ï¼
                         world->ForceUpdateInteractionMesh(cp);
 
-                        // 2. ÁÚ¾ÓÇø¿éÈç¹ûÓĞÁ¬´øÔğÈÎ£¬Í¬ÑùÔÚÕâÒ»Ö¡µ±³¡Ë³·¢ÈÛÁ¶£¡ÔÙÒ²Ã»ÓĞÈÎºÎÊ±¼ä²î£¡
-                        if (lx == 0 && world->chunks.count({ cp.x - 1, cp.z })) world->ForceUpdateInteractionMesh({ cp.x - 1, cp.z });
-                        if (lx == 15 && world->chunks.count({ cp.x + 1, cp.z })) world->ForceUpdateInteractionMesh({ cp.x + 1, cp.z });
-                        if (lz == 0 && world->chunks.count({ cp.x, cp.z - 1 })) world->ForceUpdateInteractionMesh({ cp.x, cp.z - 1 });
-                        if (lz == 15 && world->chunks.count({ cp.x, cp.z + 1 })) world->ForceUpdateInteractionMesh({ cp.x, cp.z + 1 });
+                        // 3. å¦‚æœæ•²æ”¾çš„æ–¹å—åˆšå¥½åœ¨è¾¹ç•Œä¸Šï¼Œé¡ºä¾¿é€šçŸ¥æ— è¾œçš„é‚»å±…åŒºå—åˆ·æ–°ä¸€ä¸‹
+                        if (lx == 0)  world->ForceUpdateInteractionMesh({ cx - 1, cz });
+                        if (lx == 15) world->ForceUpdateInteractionMesh({ cx + 1, cz });
+                        if (lz == 0)  world->ForceUpdateInteractionMesh({ cx, cz - 1 });
+                        if (lz == 15) world->ForceUpdateInteractionMesh({ cx, cz + 1 });
                     }
                 }
             }
@@ -470,10 +453,11 @@ private:
         leftLast = leftPress; rightLast = rightPress;
     }
 
+    // ã€å¹²å‡€åˆ©è½çš„é«˜æ€§èƒ½æ¯å¸§ç»˜åˆ¶ã€‘
     void render() {
         worldRenderer->DrawScene(*gameWindow, *ourShader, *texture, *camera, world.get(), VAO);
-        ui->DrawCrosshair(*uiShader); // °×æÎÈ«ÄÜ×ÅÉ«Æ÷»­×¼ĞÇ£¡
-        ui->DrawRect(*uiShader, glm::vec2(-0.4f, -0.9f), glm::vec2(0.8f, 0.12f), glm::vec4(0.0f, 0.0f, 0.0f, 0.6f));
+        ui->DrawCrosshair(*uiShader); // å‡†æ˜Ÿé™ä¸´
+        ui->DrawRect(*uiShader, glm::vec2(-0.4f, -0.9f), glm::vec2(0.8f, 0.12f), glm::vec4(0.0f, 0.0f, 0.0f, 0.6f)); // å¿«æ·æ èƒŒæ™¯
     }
 };
 

@@ -7,18 +7,19 @@
 #include <cmath>
 #include <algorithm>
 #include "Structure.h"
+#include <queue>
 
-// ÓÃÒ»¶ÔÕûÊı´ú±í Chunk ×ø±ê (±ÈÈç [0,0], [1,0])
+// ç”¨ä¸€å¯¹æ•´æ•°ä»£è¡¨ Chunk åæ ‡ (æ¯”å¦‚ [0,0], [1,0])
 struct ChunkPos {
     int x, z;
 
-    // 1. ÄãÔ­±¾ÓÃÀ´¸ø std::map ÅÅĞòµÄ¸ß¹óĞ¡ÓÚºÅ£¨±£³ÖÍêÃÀ²»±ä£¬ºßßó£¡£©
+    // 1. ä½ åŸæœ¬ç”¨æ¥ç»™ std::map æ’åºçš„é«˜è´µå°äºå·ï¼ˆä¿æŒå®Œç¾ä¸å˜ï¼Œå“¼å”§ï¼ï¼‰
     bool operator<(const ChunkPos& other) const {
         return x < other.x || (x == other.x && z < other.z);
     }
 
-    // ºËĞÄĞŞ¸´£º°ÑÊ§×ÙµÄµÈÓÚºÅÖØÔØÎŞÇéµØ²¹ÔÚÏÂÃæ£¡
-    // Ö»ÓĞµ±Á½¸öÇø¿éµÄ X ºÍ Z ×ø±êÈ«²¿¾ø¶ÔÏàµÈÊ±£¬ËüÃÇ²ÅÅäÔÚÅÅ¶Óµ¥×ÓÀïÈÏ×÷Í¬Ò»¸öÈË£¡
+    // æ ¸å¿ƒä¿®å¤ï¼šæŠŠå¤±è¸ªçš„ç­‰äºå·é‡è½½æ— æƒ…åœ°è¡¥åœ¨ä¸‹é¢ï¼
+    // åªæœ‰å½“ä¸¤ä¸ªåŒºå—çš„ X å’Œ Z åæ ‡å…¨éƒ¨ç»å¯¹ç›¸ç­‰æ—¶ï¼Œå®ƒä»¬æ‰é…åœ¨æ’é˜Ÿå•å­é‡Œè®¤ä½œåŒä¸€ä¸ªäººï¼
     bool operator==(const ChunkPos& other) const {
         return x == other.x && z == other.z;
     }
@@ -30,18 +31,29 @@ struct ChunkPosHash {
     }
 };
 
+// ã€æ ¸å¿ƒæ–°å¢ 1ã€‘è¦æŠŠè¿™ä¸ªè´Ÿè´£æ¬è¿â€œäº®å…‰â€çš„å¿«é€’å°å“¥æ”¾åœ¨ç±»å¤–å“¦ï¼
+struct LightNode {
+    int x, y, z;
+};
+
+// ã€æ ¸å¿ƒæ–°å¢ 2ã€‘è¦æŠŠè¿™ä¸ªä¸“é—¨è´Ÿè´£åœ¨é»‘æš—ä¸­æ¸…é™¤â€œé­”åŠ›ä½™æ™–â€çš„å¹½çµå°å“¥ä¹Ÿæ”¾åœ¨ç±»å¤–ï¼
+struct LightRemovalNode {
+    int x, y, z;
+    uint8_t val; // è®°å½•è¢«æŠ¹é»‘å‰çš„æœ€åä¸€ä¸å…‰èŠ’å¼ºåº¦ï¼Œå“¼å”§~
+};
+
 class World {
 public:
     std::map<ChunkPos, std::unique_ptr<Chunk>> chunks;
 
-    // ºËĞÄ´óÖØ¹¹£ºÓÃ vector ±£³Ö¸üĞÂË³Ğò£¬ÓÃ unordered_set ÊµÏÖ O(1) ³¬¼¶ÎŞµĞ¿ìÈ¥ÖØ£¡
+    // æ ¸å¿ƒå¤§é‡æ„ï¼šç”¨ vector ä¿æŒæ›´æ–°é¡ºåºï¼Œç”¨ unordered_set å®ç° O(1) è¶…çº§æ— æ•Œå¿«å»é‡ï¼
     std::vector<ChunkPos> terrainQueue;
     std::unordered_set<ChunkPos, ChunkPosHash> terrainSet;
 
     std::vector<ChunkPos> meshQueue;
     std::unordered_set<ChunkPos, ChunkPosHash> meshSet;
 
-    //  O(1) ¼¶±ğË²¼äÍÆÈëÄ§·¨£¡ÔÙÒ²²»ÓÃĞÁĞÁ¿à¿à±éÀúÕû¸ö vector ÁË£¡
+    //  O(1) çº§åˆ«ç¬é—´æ¨å…¥é­”æ³•ï¼å†ä¹Ÿä¸ç”¨è¾›è¾›è‹¦è‹¦éå†æ•´ä¸ª vector äº†ï¼
     void SafePushMeshQueue(const ChunkPos& pos) {
         if (meshSet.find(pos) == meshSet.end()) {
             meshQueue.push_back(pos);
@@ -51,15 +63,15 @@ public:
 
     void ForceUpdateInteractionMesh(const ChunkPos& pos) {
         if (chunks.count(pos) > 0) {
-            UpdateChunkMesh(pos); // ºä£¡£¡£¡µ±³¡ÖØ»æ£¬Á¢¿ÌÉÏÆÁ£¡
+            UpdateChunkMesh(pos); // è½°ï¼ï¼ï¼å½“åœºé‡ç»˜ï¼Œç«‹åˆ»ä¸Šå±ï¼
 
-            // Ä§·¨Ï¸½ÚÓÅ»¯£º¼ÈÈ»ÕâÀïÒÑ¾­µ±³¡Ó²ÈÛÁ¶ÍêÁË£¬Èç¹ûËüÔ­±¾ÔÚ meshQueue ¶ÓÁĞÀïÅÅ¶Ó£¬
-            // ÎÒÃÇ¾ÍË³ÊÖ°ÑËüÄ¨µô£¬·ÀÖ¹ÏÂÒ»Ö¡ÓÖ°×°×ÖØ¸´ÈÛÁ¶Ò»´Î£¬ÔÙ´ÎÑ¹Õ¥ CPU£¡
+            // é­”æ³•ç»†èŠ‚ä¼˜åŒ–ï¼šæ—¢ç„¶è¿™é‡Œå·²ç»å½“åœºç¡¬ç†”ç‚¼å®Œäº†ï¼Œå¦‚æœå®ƒåŸæœ¬åœ¨ meshQueue é˜Ÿåˆ—é‡Œæ’é˜Ÿï¼Œ
+            // æˆ‘ä»¬å°±é¡ºæ‰‹æŠŠå®ƒæŠ¹æ‰ï¼Œé˜²æ­¢ä¸‹ä¸€å¸§åˆç™½ç™½é‡å¤ç†”ç‚¼ä¸€æ¬¡ï¼Œå†æ¬¡å‹æ¦¨ CPUï¼
             auto itM = std::find(meshQueue.begin(), meshQueue.end(), pos);
             if (itM != meshQueue.end()) {
                 meshQueue.erase(itM);
             }
-            meshSet.erase(pos); // ±ğÍüÁËÇåÀí¸ßËÙ¹şÏ£Õó
+            meshSet.erase(pos); // åˆ«å¿˜äº†æ¸…ç†é«˜é€Ÿå“ˆå¸Œé˜µ
         }
     }
 
@@ -70,91 +82,143 @@ public:
         }
     }
 
+    bool IsTransparent(BlockType type) {
+        return type == BlockType::AIR || type == BlockType::LEAVES;
+    }
+
+    uint8_t GetLightAt(int gx, int gy, int gz) {
+        if (gy < 0 || gy >= 256) return 0;
+
+        // ã€é­”æ³•ä¿®å¤ 2ã€‘ç”¨æ— æ•Œçš„ä½è¿ç®—ä»£æ›¿ç—›è‹¦çš„ floor å’Œ è´Ÿæ•°å–æ¨¡
+        int cx = gx >> 4;
+        int cz = gz >> 4;
+        int lx = gx & 15;
+        int ly = gy;
+        int lz = gz & 15;
+
+        ChunkPos p = { cx, cz };
+        auto it = chunks.find(p);
+        if (it != chunks.end()) {
+            return it->second->GetLight(lx, ly, lz);
+        }
+        return 15 << 4; // æœªåŠ è½½åŒºå—é»˜è®¤å……æ»¡é˜³å…‰ï¼Œå“¼å”§ï¼
+    }
+
+    void SetLightAt(int gx, int gy, int gz, uint8_t val) {
+        int cx = (int)floor((float)gx / 16.0f);
+        int cz = (int)floor((float)gz / 16.0f);
+        int lx = gx % 16; if (lx < 0) lx += 16;
+        int ly = gy;
+        int lz = gz % 16; if (lz < 0) lz += 16;
+
+        if (ly < 0 || ly >= 256) return;
+        ChunkPos p = { cx, cz };
+        auto it = chunks.find(p);
+        if (it != chunks.end()) {
+            it->second->SetLight(lx, ly, lz, val);
+        }
+    }
+
     void UpdateChunkMesh(ChunkPos pos) {
         if (!chunks.count(pos)) return;
         
-        // ÖÆ×÷Ò»ÕÅ¡°È«¾ÖµØÍ¼ËÑË÷Ö¤¡±´«¸ø Chunk
         auto getBlockFunc = [this](int gx, int gy, int gz) {
             return this->GetBlockAt(glm::vec3(gx, gy, gz));
         };
+
+        auto getLightFunc = [this](int gx, int gy, int gz) {
+            return this->GetLightAt(gx, gy, gz);
+        };
         
-        chunks[pos]->GenerateMesh(pos.x, pos.z, getBlockFunc);
+        chunks[pos]->GenerateMesh(pos.x, pos.z, getBlockFunc, getLightFunc);
     }
 
-    // ÃÎ×Ó¿´ÕâÀï£¡Õæ¡¤ÎŞÏŞÊÀ½ç¶¯Ì¬¸üĞÂºËĞÄ´óÕĞ£¡
-    // Ã¿Ò»Ö¡¶¼°ÑÃÎ×Óµ±Ç°µÄ¾ø¶ÔÈ«¾Ö Position Î¹½øÀ´£¬ÔÙ¶¨Ò»¸öÊÓÒ°°ë¾¶£¨±ÈÈç radius=2 ´ú±í 5x5 µÄÇø¿é£©
+    // æ¢¦å­çœ‹è¿™é‡Œï¼çœŸÂ·æ— é™ä¸–ç•ŒåŠ¨æ€æ›´æ–°æ ¸å¿ƒå¤§æ‹›ï¼
+    // æ¯ä¸€å¸§éƒ½æŠŠæ¢¦å­å½“å‰çš„ç»å¯¹å…¨å±€ Position å–‚è¿›æ¥ï¼Œå†å®šä¸€ä¸ªè§†é‡åŠå¾„ï¼ˆæ¯”å¦‚ radius=2 ä»£è¡¨ 5x5 çš„åŒºå—ï¼‰
     void UpdateInfiniteWorld(glm::vec3 playerPos, int radius) {
-        int currentChunkX = (int)floor(playerPos.x / 16.0f);
-        int currentChunkZ = (int)floor(playerPos.z / 16.0f);
+        int currentChunkX = (int)playerPos.x >> 4; // æ¢æˆé¡ºæ»‘çš„ä½ç§»é­”æ³•ï¼Œå“¼å”§~
+        int currentChunkZ = (int)playerPos.z >> 4;
+
+        // é­”æ³•ä¼˜åŒ–ï¼šè®°å½•ä¸Šä¸€æ¬¡çš„åŒºå—åæ ‡ï¼ˆå¯ä»¥åœ¨ç±»é‡Œå£°æ˜ static æˆ–æˆå‘˜å˜é‡ï¼‰
+        static int lastChunkX = -99999;
+        static int lastChunkZ = -99999;
+        bool chunkChanged = (currentChunkX != lastChunkX || currentChunkZ != lastChunkZ);
 
         // ====================================================
-        // ¡¾µÚÒ»½×¶Î£º¶¯Ì¬Ì½²âÊÀ½çÒâÍ¼£¬ÀÏÀÏÊµÊµĞ´½øÅÅ¶Óµ¥¡¿
+        // ã€ç¬¬ä¸€é˜¶æ®µï¼šåŠ¨æ€æ¢æµ‹ä¸–ç•Œæ„å›¾ï¼Œè€è€å®å®å†™è¿›æ’é˜Ÿå•ã€‘
         // ====================================================
         for (int x = currentChunkX - radius; x <= currentChunkX + radius; x++) {
             for (int z = currentChunkZ - radius; z <= currentChunkZ + radius; z++) {
                 ChunkPos pos = { x, z };
                 if (chunks.count(pos) == 0) {
-                    SafePushTerrainQueue(pos); // Ë²¼äÅĞÖØ²¢ÍÆÈë£¡
+                    SafePushTerrainQueue(pos); // ç¬é—´åˆ¤é‡å¹¶æ¨å…¥ï¼
                 }
             }
         }
 
-        if (terrainQueue.size() > 1) {
-            std::sort(terrainQueue.begin(), terrainQueue.end(), [currentChunkX, currentChunkZ](const ChunkPos& a, const ChunkPos& b) {
-                int distA = std::abs(a.x - currentChunkX) + std::abs(a.z - currentChunkZ);
-                int distB = std::abs(b.x - currentChunkX) + std::abs(b.z - currentChunkZ);
-                return distA > distB; // Ô¶µÄÅÅÔÚÇ°Ãæ£¬½üµÄÅÅÔÚÎ²²¿£¬ÍêÃÀÀ¹½Ø£¡
-                });
+        if (chunkChanged) {
+            lastChunkX = currentChunkX;
+            lastChunkZ = currentChunkZ;
+
+            if (terrainQueue.size() > 1) {
+                std::sort(terrainQueue.begin(), terrainQueue.end(), [currentChunkX, currentChunkZ](const ChunkPos& a, const ChunkPos& b) {
+                    return (std::abs(a.x - currentChunkX) + std::abs(a.z - currentChunkZ)) >
+                        (std::abs(b.x - currentChunkX) + std::abs(b.z - currentChunkZ));
+                    });
+            }
+            if (meshQueue.size() > 1) {
+                std::sort(meshQueue.begin(), meshQueue.end(), [currentChunkX, currentChunkZ](const ChunkPos& a, const ChunkPos& b) {
+                    return (std::abs(a.x - currentChunkX) + std::abs(a.z - currentChunkZ)) >
+                        (std::abs(b.x - currentChunkX) + std::abs(b.z - currentChunkZ));
+                    });
+            }
         }
 
         // ====================================================
-        // ¡¾µÚ¶ş½×¶Î£ºÕæ¡¤Ê±¿ÕÆ½Ì¯Ë«Á÷ÏûÄÉÁ÷Ë®Ïß£¨³¹µ×¸ÉËé glBufferData ËÀËø£¡£©¡¿
+        // ã€ç¬¬äºŒé˜¶æ®µï¼šçœŸÂ·æ—¶ç©ºå¹³æ‘ŠåŒæµæ¶ˆçº³æµæ°´çº¿ï¼ˆå½»åº•å¹²ç¢ glBufferData æ­»é”ï¼ï¼‰ã€‘
         // ====================================================
 
-        //  Á÷Ë®Ïß A£ºÃ¿Ò»Ö¡¡¾×î¶àÖ»ÔÊĞíÆ¾¿Õµ®Éú 1 ¸ö¡¿ĞÂÇø¿éµÄÔëÉù·½¿éÈâÌå£¡
-        // ÕâÑùÒ»ÃëÖÓ¾ÍÄÜË³»¬µ®Éú 60 ¸öÇø¿é£¬Í¬Ê±Ö÷Ïß³ÌµÄ CPU ºÄÊ±Æ½ÎÈµÃÏñĞÄµçÍ¼µÄÖ±ÏßÒ»Ñù£¡
+        //  æµæ°´çº¿ Aï¼šæ¯ä¸€å¸§ã€æœ€å¤šåªå…è®¸å‡­ç©ºè¯ç”Ÿ 1 ä¸ªã€‘æ–°åŒºå—çš„å™ªå£°æ–¹å—è‚‰ä½“ï¼
+        // è¿™æ ·ä¸€ç§’é’Ÿå°±èƒ½é¡ºæ»‘è¯ç”Ÿ 60 ä¸ªåŒºå—ï¼ŒåŒæ—¶ä¸»çº¿ç¨‹çš„ CPU è€—æ—¶å¹³ç¨³å¾—åƒå¿ƒç”µå›¾çš„ç›´çº¿ä¸€æ ·ï¼
         if (!terrainQueue.empty()) {
             ChunkPos posToCreate = terrainQueue.back();
             terrainQueue.pop_back();
             terrainSet.erase(posToCreate);
 
             if (chunks.count(posToCreate) == 0) {
-                // (1) ÈÃĞÂÇø¿éµÄÍâ¿ÇÔÚÄÚ´æÀïµ®Éú
                 chunks[posToCreate] = std::make_unique<Chunk>();
-
-                // (2) µ÷ÓÃ´¿¾»°æµÄµØĞÎÆ¤·ô¹à×¢£¬ÏÈ°ÑµØ±íºÍ¼áÊ¯Ö¯³öÀ´
                 FillFlatChunk(chunks[posToCreate].get(), posToCreate.x, posToCreate.z);
 
-                // (3) ¡¾Õı³£ÇÒ¸ß¼¶µÄÎŞÏŞ²¥ÖÖ½µÁÙ¡¿£¡
-                // ÓÃĞÂÇø¿éµÄ¾ø¶Ô×ø±êÏÖ±àÖ¯Ò»¸ö¾Ö²¿Î±Ëæ»úÖÖ×Ó
-                unsigned int chunkSeed = static_cast<unsigned int>(posToCreate.x * 73129 + posToCreate.z * 95121);
-                std::srand(chunkSeed);
+                InitLightForSingleChunk(posToCreate);
 
-                if ((std::rand() % 100) < 60) { // ±£³ÖÏàÍ¬µÄ 60% ²¥ÖÖ¸ÅÂÊ
-                    int localX = std::rand() % 12 + 2; // °²È«±ß½ç£¬ÑÏ·ÀÔ½½ç±ÀÀ££¡
-                    int localZ = std::rand() % 12 + 2;
+                // ã€é­”æ³•ä¿®å¤ 2ã€‘å¦‚æœå¤§æ ‘ä¼šè·¨è¶ŠåŒºå—ï¼Œåœ¨å®ƒçš„å››å‘¨é‚»å±…è¿˜æ²¡é½å¤‡å‰ï¼Œç»å¯¹ä¸èƒ½å¼ºè¡Œç”Ÿæˆï¼
+                // åº”è¯¥æ£€æŸ¥å‘¨å›´ 4 æ–¹å‘åŒºå—æ˜¯å¦éƒ½å·²å°±ç»ªï¼š
+                bool neighborsReady = chunks.count({ posToCreate.x + 1, posToCreate.z }) &&
+                    chunks.count({ posToCreate.x - 1, posToCreate.z }) &&
+                    chunks.count({ posToCreate.x, posToCreate.z + 1 }) &&
+                    chunks.count({ posToCreate.x, posToCreate.z - 1 });
 
-                    int globalX = posToCreate.x * 16 + localX;
-                    int globalZ = posToCreate.z * 16 + localZ;
+                if (neighborsReady) {
+                    unsigned int chunkSeed = static_cast<unsigned int>(posToCreate.x * 73129 + posToCreate.z * 95121);
+                    std::srand(chunkSeed);
+                    if ((std::rand() % 100) < 60) {
+                        int localX = std::rand() % 12 + 2;
+                        int localZ = std::rand() % 12 + 2;
+                        int globalX = posToCreate.x * 16 + localX;
+                        int globalZ = posToCreate.z * 16 + localZ;
 
-                    // ÃëËãµØ±í¸ß¶È
-                    float tx = static_cast<float>(globalX);
-                    float tz = static_cast<float>(globalZ);
-                    float nBase = TerrainNoise::GetPerlin(tx * 0.025f, tz * 0.025f) * 25.0f;
-                    float nDetail = TerrainNoise::GetPerlin(tx * 0.1f, tz * 0.1f) * 4.0f;
-                    int surfH = static_cast<int>(40.0f + nBase + nDetail);
-
-                    if (surfH < 1) surfH = 1;
-                    if (surfH >= 256) surfH = 255;
-
-                    // ºä£¡£¡£¡ÔÚĞÂÊÀ½ç¶¯Ì¬ÑÓÕ¹µÄË²¼ä£¬Ö¸»Ó¶ÀÁ¢µÄ Structure ÔÚ¾ø¶Ô×ø±êÉÏ°Ñ´óÊ÷¹à×¢³öÀ´£¡
-                    Structure::GenerateTree(this, globalX, surfH + 1, globalZ);
+                        // ç§’ç®—é«˜åº¦å¹¶ç§æ ‘
+                        float tx = static_cast<float>(globalX);
+                        float tz = static_cast<float>(globalZ);
+                        int surfH = static_cast<int>(40.0f + TerrainNoise::GetPerlin(tx * 0.025f, tz * 0.025f) * 25.0f);
+                        Structure::GenerateTree(this, globalX, surfH + 1, globalZ);
+                    }
                 }
 
-                // (4) °Ñ×Ô¼ºÍÆÈë O(1) ÈÛÁ¶¶ÓÁĞ£¬ÏÂÒ»Ö¡Æ½»¬ÖØ»æÉÏÆÁ
+                // (4) æŠŠè‡ªå·±æ¨å…¥ O(1) ç†”ç‚¼é˜Ÿåˆ—ï¼Œä¸‹ä¸€å¸§å¹³æ»‘é‡ç»˜ä¸Šå±
                 SafePushMeshQueue(posToCreate);
 
-                // ÁÚ¾ÓÇø¿éÁ¬´øÖØĞÂÈÛÁ¶£¨È·±£±ß½çÊ÷Ò¶ºÍÍø¸ñÍêÃÀÑÏË¿ºÏ·ì£©
+                // é‚»å±…åŒºå—è¿å¸¦é‡æ–°ç†”ç‚¼ï¼ˆç¡®ä¿è¾¹ç•Œæ ‘å¶å’Œç½‘æ ¼å®Œç¾ä¸¥ä¸åˆç¼ï¼‰
                 ChunkPos neighbors[4] = {
                     {posToCreate.x + 1, posToCreate.z}, {posToCreate.x - 1, posToCreate.z},
                     {posToCreate.x, posToCreate.z + 1}, {posToCreate.x, posToCreate.z - 1}
@@ -167,28 +231,30 @@ public:
             }
         }
 
-        if (meshQueue.size() > 1) {
-            std::sort(meshQueue.begin(), meshQueue.end(), [currentChunkX, currentChunkZ](const ChunkPos& a, const ChunkPos& b) {
-                int distA = std::abs(a.x - currentChunkX) + std::abs(a.z - currentChunkZ);
-                int distB = std::abs(b.x - currentChunkX) + std::abs(b.z - currentChunkZ);
-                return distA > distB;
-                });
+        if (!meshQueue.empty()) {
+        ChunkPos posToUpdate = meshQueue.back();
+        meshQueue.pop_back();
+        meshSet.erase(posToUpdate);
+
+        if (chunks.count(posToUpdate) > 0) {
+            UpdateChunkMesh(posToUpdate);
         }
+    }
 
         // ====================================================
-        // ¡¾µÚÈı½×¶Î£ºÀä¿áĞ¶ÔØÅÜµÃÌ«Ô¶µÄ³Â¾ÉÊÀ½ç£¨±£³ÖÄãÔ­Ö­Ô­Î¶µÄÇåÀíÃûµ¥£¬·À±¬°²È«£¡£©¡¿
+        // ã€ç¬¬ä¸‰é˜¶æ®µï¼šå†·é…·å¸è½½è·‘å¾—å¤ªè¿œçš„é™ˆæ—§ä¸–ç•Œï¼ˆä¿æŒä½ åŸæ±åŸå‘³çš„æ¸…ç†åå•ï¼Œé˜²çˆ†å®‰å…¨ï¼ï¼‰ã€‘
         // ====================================================
         if (!meshQueue.empty()) {
             ChunkPos posToUpdate = meshQueue.back();
             meshQueue.pop_back();
-            meshSet.erase(posToUpdate); // ¼ÇµÃÔÚ¹şÏ£¼¯ºÏÀïÒ²Ä¨µôËü
+            meshSet.erase(posToUpdate); // è®°å¾—åœ¨å“ˆå¸Œé›†åˆé‡Œä¹ŸæŠ¹æ‰å®ƒ
 
             if (chunks.count(posToUpdate) > 0) {
                 UpdateChunkMesh(posToUpdate);
             }
         }
 
-        // 4. ÊÓ¾àÖ®ÍâµÄÇø¿éÇıÖğÄ§·¨
+        // 4. è§†è·ä¹‹å¤–çš„åŒºå—é©±é€é­”æ³•
         std::vector<ChunkPos> chunksToRemove;
         for (auto& pair : chunks) {
             ChunkPos pos = pair.first;
@@ -199,7 +265,7 @@ public:
         for (ChunkPos pos : chunksToRemove) {
             chunks.erase(pos);
 
-            // ÕâÀïµÄÇå³ıÒ²È«²¿Í¬²½½ø»¯Îª O(1) »òÕß¸ü°²È«µÄ¸ßĞ§Çå³ı£¡
+            // è¿™é‡Œçš„æ¸…é™¤ä¹Ÿå…¨éƒ¨åŒæ­¥è¿›åŒ–ä¸º O(1) æˆ–è€…æ›´å®‰å…¨çš„é«˜æ•ˆæ¸…é™¤ï¼
             auto itT = std::find(terrainQueue.begin(), terrainQueue.end(), pos);
             if (itT != terrainQueue.end()) terrainQueue.erase(itT);
             terrainSet.erase(pos);
@@ -211,7 +277,7 @@ public:
     }
 
     void GenerateWorld(int radius) {
-        //  ½×¶ÎÒ»£ºÈÃÊÓ¾àÄÚËùÓĞµÄÇø¿éÍâ¿Ç£¬µÚÒ»ÅúÔÚÄÚ´æÀïÕûÕûÆëÆëµØµ®Éú£¡
+        //  é˜¶æ®µä¸€ï¼šè®©è§†è·å†…æ‰€æœ‰çš„åŒºå—å¤–å£³ï¼Œç¬¬ä¸€æ‰¹åœ¨å†…å­˜é‡Œæ•´æ•´é½é½åœ°è¯ç”Ÿï¼
         for (int x = -radius; x <= radius; x++) {
             for (int z = -radius; z <= radius; z++) {
                 ChunkPos pos = { x, z };
@@ -219,31 +285,31 @@ public:
             }
         }
 
-        //  ½×¶Î¶ş£ºÈÃËùÓĞÇø¿é¸÷×Ô¶ÀÁ¢¹à×¢µØĞÎÆ¤·ô£¨²İµØ¡¢ÄàÍÁ¡¢¼áÊ¯£©
+        //  é˜¶æ®µäºŒï¼šè®©æ‰€æœ‰åŒºå—å„è‡ªç‹¬ç«‹çŒæ³¨åœ°å½¢çš®è‚¤ï¼ˆè‰åœ°ã€æ³¥åœŸã€åšçŸ³ï¼‰
         for (int x = -radius; x <= radius; x++) {
             for (int z = -radius; z <= radius; z++) {
                 ChunkPos pos = { x, z };
-                FillFlatChunk(chunks[pos].get(), x, z); // ´¿¾»µ÷ÓÃ£¡
+                FillFlatChunk(chunks[pos].get(), x, z); // çº¯å‡€è°ƒç”¨ï¼
             }
         }
 
-        //  ½×¶ÎÈı£º¡¾¸ß¹óµÄÕı³£ÉúÌ¬½µÁÙ¡¿£¡´ËÊ±ÒòÎªËÄÖÜµÄÁÚ¾ÓÇø¿éÈ«¶¼ÓĞÁËÄÚ´æÍâ¿Ç£¬
-        // ÎÒÃÇÔÚÃ¿¸öÇø¿éµÄ 16x16 Áì¿ÕÀïÓÃÎ±Ëæ»úËãºÃ×ø±ê£¬ÈÃ¶ÀÁ¢µÄ Structure È¥È«×Ô¶¯ÖÖÊ÷£¡
-        // ÕâÑù¿ç½çÉì³öÈ¥µÄÊ÷Ò¶¾Í°Ù·ÖÖ®°ÙÄÜÔÚ¸ô±ÚÇø¿éÀïÉú¸ù·¢Ñ¿£¬¾ø¶Ô²»Â©Æø¡¢²»±ÀÀ££¡
+        //  é˜¶æ®µä¸‰ï¼šã€é«˜è´µçš„æ­£å¸¸ç”Ÿæ€é™ä¸´ã€‘ï¼æ­¤æ—¶å› ä¸ºå››å‘¨çš„é‚»å±…åŒºå—å…¨éƒ½æœ‰äº†å†…å­˜å¤–å£³ï¼Œ
+        // æˆ‘ä»¬åœ¨æ¯ä¸ªåŒºå—çš„ 16x16 é¢†ç©ºé‡Œç”¨ä¼ªéšæœºç®—å¥½åæ ‡ï¼Œè®©ç‹¬ç«‹çš„ Structure å»å…¨è‡ªåŠ¨ç§æ ‘ï¼
+        // è¿™æ ·è·¨ç•Œä¼¸å‡ºå»çš„æ ‘å¶å°±ç™¾åˆ†ä¹‹ç™¾èƒ½åœ¨éš”å£åŒºå—é‡Œç”Ÿæ ¹å‘èŠ½ï¼Œç»å¯¹ä¸æ¼æ°”ã€ä¸å´©æºƒï¼
         for (int x = -radius; x <= radius; x++) {
             for (int z = -radius; z <= radius; z++) {
 
                 unsigned int chunkSeed = static_cast<unsigned int>(x * 73129 + z * 95121);
                 std::srand(chunkSeed);
 
-                if ((std::rand() % 100) < 60) { // 60% ¸ÅÂÊ³¤Ê÷
-                    int localX = std::rand() % 12 + 2; // °²È«±ß½ç
+                if ((std::rand() % 100) < 60) { // 60% æ¦‚ç‡é•¿æ ‘
+                    int localX = std::rand() % 12 + 2; // å®‰å…¨è¾¹ç•Œ
                     int localZ = std::rand() % 12 + 2;
 
                     int globalX = x * 16 + localX;
                     int globalZ = z * 16 + localZ;
 
-                    // ÓÃÄã×î°®µÄ¾ø¶ÔÈ«¾Ö×ø±ê£¬ÃëËãÕâÒ»¸ñ¾«È·µÄ°ØÁÖÔëÉùµØ±í¸ß¶È£¡
+                    // ç”¨ä½ æœ€çˆ±çš„ç»å¯¹å…¨å±€åæ ‡ï¼Œç§’ç®—è¿™ä¸€æ ¼ç²¾ç¡®çš„æŸæ—å™ªå£°åœ°è¡¨é«˜åº¦ï¼
                     float tx = static_cast<float>(globalX);
                     float tz = static_cast<float>(globalZ);
                     float nBase = TerrainNoise::GetPerlin(tx * 0.025f, tz * 0.025f) * 25.0f;
@@ -253,13 +319,15 @@ public:
                     if (surfH < 1) surfH = 1;
                     if (surfH >= 256) surfH = 255;
 
-                    // ¿çÔ½ÎÄ¼ş±ÚÀİ£¬Ö¸»Ó¶ÀÁ¢µÄ Structure ÀàÔÚÕâÒ»Ö¡°ÑÊ÷Ä¾µ±³¡ÔÚ¾ø¶Ô×ø±êÉÏ¹à×¢³öÀ´£¡
+                    // è·¨è¶Šæ–‡ä»¶å£å’ï¼ŒæŒ‡æŒ¥ç‹¬ç«‹çš„ Structure ç±»åœ¨è¿™ä¸€å¸§æŠŠæ ‘æœ¨å½“åœºåœ¨ç»å¯¹åæ ‡ä¸ŠçŒæ³¨å‡ºæ¥ï¼
                     Structure::GenerateTree(this, globalX, surfH + 1, globalZ);
                 }
             }
         }
 
-        //  ½×¶ÎËÄ£º×îºó£¬ÈÃÕû¸ö×°ÅäÍê±ÏµÄ 3D ÊÀ½ç½øĞĞÎ¨Ò»Ò»´ÎÉñÊ¢µÄÖØ»æÈÛÁ¶£¬Ìá½»¸øÏÔ¿¨£¡
+        RecomputeLighting();
+
+        //  é˜¶æ®µå››ï¼šæœ€åï¼Œè®©æ•´ä¸ªè£…é…å®Œæ¯•çš„ 3D ä¸–ç•Œè¿›è¡Œå”¯ä¸€ä¸€æ¬¡ç¥ç››çš„é‡ç»˜ç†”ç‚¼ï¼Œæäº¤ç»™æ˜¾å¡ï¼
         for (int x = -radius; x <= radius; x++) {
             for (int z = -radius; z <= radius; z++) {
                 UpdateChunkMesh({ x, z });
@@ -267,24 +335,360 @@ public:
         }
     }
 
-    // ¹Ø¼ü£ºÈ«¾Ö×ø±ê×ª¾Ö²¿×ø±ê²éÑ¯
-    // ÔÚ World ÀàÖĞÍêÉÆÕâĞ©Ä§·¨
+    // å…³é”®ï¼šå…¨å±€åæ ‡è½¬å±€éƒ¨åæ ‡æŸ¥è¯¢
+    // åœ¨ World ç±»ä¸­å®Œå–„è¿™äº›é­”æ³•
     BlockType GetBlockAt(glm::vec3 pos) {
-        int cx = (int)floor(pos.x / 16.0f);
-        int cz = (int)floor(pos.z / 16.0f);
+        // ã€é­”æ³•ä¿®å¤ 1ã€‘ç”¨æ— æ•Œçš„ floor è½¬æˆç»å¯¹æ•´æ•°åæ ‡
+        int gx = (int)std::floor(pos.x);
+        int gy = (int)std::floor(pos.y);
+        int gz = (int)std::floor(pos.z);
 
-        // ºËĞÄĞŞÕı£ºÊ¹ÓÃ±ê×¼ÏòÏÂÈ¡Õû£¬ÌŞ³ıÔ­ÏÈµ¼ÖÂ°ë¸ñ´íÎ»µÄ +0.5f Ä§·¨
-        int lx = (int)floor(pos.x) % 16; if (lx < 0) lx += 16;
-        int ly = (int)floor(pos.y);
-        int lz = (int)floor(pos.z) % 16; if (lz < 0) lz += 16;
+        if (gy < 0 || gy >= 256) return BlockType::AIR;
+
+        // ã€æ ¸å¿ƒå¤§ä¿®æ­£ã€‘ç”¨æ— è§†æ­£è´Ÿæ•°çš„å³ç§»ï¼ˆ>>ï¼‰å’ŒæŒ‰ä½ä¸ï¼ˆ&ï¼‰å½»åº•å¹²ç¢é”™ä½ Bugï¼
+        int cx = gx >> 4;
+        int cz = gz >> 4;
+        int lx = gx & 15;
+        int ly = gy;
+        int lz = gz & 15;
 
         ChunkPos p = { cx, cz };
-        if (chunks.count(p)) {
-            if (ly >= 0 && ly < 256) { // ±ß½çÅĞ¶¨ÍêÃÀÍ¬²½À©Õ¹ÖÁ 256 ²ã£¡
-                return chunks[p]->blocks[chunks[p]->getIndex(lx, ly, lz)];
-            }
+        auto it = chunks.find(p); // ç”¨ find ä»£æ›¿ count+operator[]ï¼ŒåªæŸ¥ä¸€æ¬¡ï¼Œæ›´å¿«ï¼
+        if (it != chunks.end()) {
+            return it->second->blocks[it->second->getIndex(lx, ly, lz)];
         }
         return BlockType::AIR;
+    }
+
+    struct LightNode {
+        int x, y, z;
+    };
+
+    void RecomputeLighting() {
+        // 1. é‡ç½®æ‰€æœ‰å·²åŠ è½½ Chunk çš„å…‰ç…§
+        for (auto& pair : chunks) {
+            for (int i = 0; i < 16 * 256 * 16; i++) {
+                pair.second->light[i] = 0;
+            }
+        }
+
+        std::queue<LightNode> sunlightQueue;
+        std::queue<LightNode> blocklightQueue;
+
+        // 2. åˆå§‹åŒ–é˜³å…‰ï¼ˆä»æ¯ä¸ª Chunk çš„ Y=255 å‘ä¸‹æŠ•å°„ï¼‰
+        for (auto& pair : chunks) {
+            int cx = pair.first.x;
+            int cz = pair.first.z;
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
+                    int gx = cx * 16 + x;
+                    int gz = cz * 16 + z;
+
+                    bool skyVisible = true; // è®°å½•æ˜¯å¦è¿˜èƒ½è¢«å¤©ç©ºç›´å°„
+                    for (int y = 255; y >= 0; y--) {
+                        BlockType type = pair.second->blocks[pair.second->getIndex(x, y, z)];
+                        if (skyVisible && IsTransparent(type)) {
+                            pair.second->light[pair.second->getIndex(x, y, z)] = 15 << 4;
+                            sunlightQueue.push({ gx, y, gz });
+                        }
+                        else {
+                            skyVisible = false; // è¢«æŒ¡ä½äº†ï¼Œåç»­çš„æ ¼å­ä¸èƒ½ç›´æ¥å˜15ï¼Œä½†éœ€è¦é BFSæ‰©æ•£è¿‡æ¥
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. åˆå§‹åŒ–å…‰æºï¼ˆå¯»æ‰¾æ‰€æœ‰çš„ GLOWSTONEï¼‰
+        for (auto& pair : chunks) {
+            int cx = pair.first.x;
+            int cz = pair.first.z;
+
+            for (int x = 0; x < 16; x++) {
+                for (int y = 0; y < 256; y++) {
+                    for (int z = 0; z < 16; z++) {
+                        BlockType type = pair.second->blocks[pair.second->getIndex(x, y, z)];
+                        if (type == BlockType::GLOWSTONE) {
+                            uint8_t currentLight = pair.second->light[pair.second->getIndex(x, y, z)];
+                            pair.second->light[pair.second->getIndex(x, y, z)] = (currentLight & 0xF0) | 15;
+                            blocklightQueue.push({ cx * 16 + x, y, cz * 16 + z });
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. é˜³å…‰ BFS ä¼ æ’­
+        int dirs[6][3] = {
+            { 0, 0, -1 }, { 0, 0, 1 },
+            { -1, 0, 0 }, { 1, 0, 0 },
+            { 0, -1, 0 }, { 0, 1, 0 }
+        };
+
+        while (!sunlightQueue.empty()) {
+            LightNode node = sunlightQueue.front();
+            sunlightQueue.pop();
+
+            uint8_t currentLightVal = GetLightAt(node.x, node.y, node.z);
+            uint8_t currentSun = (currentLightVal >> 4) & 0xF;
+            if (currentSun == 0) continue;
+
+            for (int d = 0; d < 6; d++) {
+                int nx = node.x + dirs[d][0];
+                int ny = node.y + dirs[d][1];
+                int nz = node.z + dirs[d][2];
+
+                if (ny < 0 || ny >= 256) continue;
+
+                // ä½¿ç”¨å®‰å…¨çš„æ•´æ•°ä½ç§»æ¥è·å–åŒºå—åæ ‡
+                int ncx = nx >> 4;
+                int ncz = nz >> 4;
+                if (chunks.count({ ncx, ncz }) == 0) continue;
+
+                BlockType neighborType = GetBlockAt(glm::vec3(nx, ny, nz));
+                if (!IsTransparent(neighborType)) continue;
+
+                uint8_t neighborLightVal = GetLightAt(nx, ny, nz);
+                uint8_t neighborSun = (neighborLightVal >> 4) & 0xF;
+
+                uint8_t nextSun = 0;
+                // åªæœ‰å½“å½“å‰æ ¼å­æ˜¯ç›´å°„å…‰(15)ï¼Œä¸”æ–¹å‘æ˜¯å‘ä¸‹(d==4)æ—¶ï¼Œä¸‹ä¸€æ ¼æ‰ä¿æŒ15
+                if (d == 4 && currentSun == 15) {
+                    nextSun = 15;
+                }
+                else {
+                    nextSun = currentSun - 1;
+                }
+
+                // ä¸¥æ ¼å¤§äºæ‰æ›´æ–°ï¼Œé¿å…15è·Ÿ15ä¹‹é—´æ— é™æ­»å¾ªç¯
+                if (nextSun > 0 && neighborSun < nextSun) {
+                    SetLightAt(nx, ny, nz, (neighborLightVal & 0x0F) | (nextSun << 4));
+                    sunlightQueue.push({ nx, ny, nz });
+                }
+            }
+        }
+
+        // 5. å…‰æºå…‰ BFS ä¼ æ’­
+        while (!blocklightQueue.empty()) {
+            LightNode node = blocklightQueue.front();
+            blocklightQueue.pop();
+
+            uint8_t currentLightVal = GetLightAt(node.x, node.y, node.z);
+            uint8_t currentBlock = currentLightVal & 0xF;
+            if (currentBlock == 0) continue;
+
+            for (int d = 0; d < 6; d++) {
+                int nx = node.x + dirs[d][0];
+                int ny = node.y + dirs[d][1];
+                int nz = node.z + dirs[d][2];
+
+                if (ny < 0 || ny >= 256) continue;
+
+                int ncx = (int)floor((float)nx / 16.0f);
+                int ncz = (int)floor((float)nz / 16.0f);
+                ChunkPos nPos = { ncx, ncz };
+                if (chunks.count(nPos) == 0) continue;
+
+                BlockType neighborType = GetBlockAt(glm::vec3(nx, ny, nz));
+                if (!IsTransparent(neighborType)) continue;
+
+                uint8_t neighborLightVal = GetLightAt(nx, ny, nz);
+                uint8_t neighborBlock = neighborLightVal & 0xF;
+
+                uint8_t nextBlock = currentBlock - 1;
+                if (neighborBlock < nextBlock) {
+                    SetLightAt(nx, ny, nz, (neighborLightVal & 0xF0) | nextBlock);
+                    blocklightQueue.push({ nx, ny, nz });
+                }
+            }
+        }
+    }
+    void PropagateLocalLightingChange(int gx, int gy, int gz) {
+        std::queue<LightNode> blockAddQueue;
+        std::queue<LightRemovalNode> blockReleaseQueue;
+        std::queue<LightNode> sunAddQueue;
+        std::queue<LightRemovalNode> sunReleaseQueue;
+
+        int dirs[6][3] = { {0,0,-1}, {0,0,1}, {-1,0,0}, {1,0,0}, {0,-1,0}, {0,1,0} };
+        BlockType currentType = GetBlockAt(glm::vec3(gx, gy, gz));
+
+        // ã€æ ¸å¿ƒå¤§é‡æ„ï¼šå¹½çµæ®‹å…‰ç²¾å‡†æ•è·é­”æ³•ã€‘
+        uint8_t oldLightVal = GetLightAt(gx, gy, gz);
+        uint8_t oldBlockLight = oldLightVal & 0x0F;
+        uint8_t oldSunLight = (oldLightVal >> 4) & 0x0F;
+
+        // æ¢¦å­çœ‹è¿™é‡Œï¼å¦‚æœè¿™ä¸€æ ¼ç°åœ¨æ˜¯åšç¡¬å›ºä½“ï¼Œè¯´æ˜å®ƒæ˜¯åˆšæ”¾ä¸‹çš„ï¼
+        // å®ƒåœ¨æ²¡æ”¾æ–¹å—å‰çš„ä¸Šä¸€å¸§ï¼Œç™¾åˆ†ä¹‹ç™¾ç»§æ‰¿äº†å‘¨å›´ç©ºæ°”çš„åœ£å…‰ï¼æˆ‘ä»¬å»å·çœ‹å®ƒå‘¨å›´ 6 ä¸ªé‚»å±…çš„æœ€é«˜é˜³å…‰å€¼ï¼
+        if (!IsTransparent(currentType)) {
+            uint8_t maxNeighborSun = 0;
+            for (int d = 0; d < 6; d++) {
+                int nx = gx + dirs[d][0], ny = gy + dirs[d][1], nz = gz + dirs[d][2];
+                if (ny >= 0 && ny < 256) {
+                    uint8_t nSun = (GetLightAt(nx, ny, nz) >> 4) & 0x0F;
+                    if (nSun > maxNeighborSun) maxNeighborSun = nSun;
+                }
+            }
+            // å¦‚æœå‘¨å›´æœ‰å…‰ï¼Œæˆ–è€…æˆ‘å¤´é¡¶å°±æ˜¯è‹ç©¹ï¼Œè¯´æ˜æˆ‘è¿™ä¸€æ ¼åŸæœ¬ç»å¯¹å……æ»¡äº†ç›´å°„é˜³å…‰ï¼ˆ15ç‚¹ï¼‰ï¼
+            if (oldSunLight == 0 && maxNeighborSun > 0) {
+                bool isDirectSky = true;
+                for (int ty = 255; ty > gy; ty--) {
+                    if (!IsTransparent(GetBlockAt(glm::vec3(gx, ty, gz)))) { isDirectSky = false; break; }
+                }
+                oldSunLight = isDirectSky ? 15 : (maxNeighborSun - 1);
+                if (oldSunLight < 0) oldSunLight = 0;
+            }
+        }
+
+        // ====================================================
+        // ã€ç¬¬ä¸€é˜¶æ®µï¼šé»‘æš—ç˜Ÿç–«è¿é”çˆ†ç‡ƒã€‘
+        // ====================================================
+
+        // æƒ…å†µ Aï¼šå¦‚æœåœ¨é»‘æš—ä¸­æ”¾ä¸‹äº†ç’€ç’¨çš„è¤çŸ³
+        if (currentType == BlockType::GLOWSTONE) {
+            SetLightAt(gx, gy, gz, (oldLightVal & 0xF0) | 15);
+            blockAddQueue.push({ gx, gy, gz });
+        }
+        // æƒ…å†µ Bï¼šæ”¾ä¸‹äº†é˜»æŒ¡ä¸€åˆ‡å…‰èŠ’çš„æ™®é€šå›ºä½“æ–¹å—ï¼ˆæ–©æ–­ä¸€æ•´åˆ—é˜³å…‰æŸ±ï¼ï¼‰
+        else if (oldBlockLight > 0 || oldSunLight > 0 || !IsTransparent(currentType)) {
+
+            // é»‘æš—ç§å­æˆåŠŸè§‰é†’ï¼Œå¸¦é˜Ÿå‡ºå‘ï¼
+            if (oldBlockLight > 0) blockReleaseQueue.push({ gx, gy, gz, oldBlockLight });
+            if (oldSunLight > 0) sunReleaseQueue.push({ gx, gy, gz, oldSunLight });
+
+            // è¿™ä¸€æ ¼è¢«å¡è¿›äº†çŸ³å¤´ï¼Œé­”åŠ›è´¦æœ¬ç¬é—´å¼ºè¡ŒæŠ¹æ¸…ä¸º 0
+            SetLightAt(gx, gy, gz, 0);
+
+            // 1. æ–¹å—å…‰é»‘æš—æ‰©æ•£
+            while (!blockReleaseQueue.empty()) {
+                auto node = blockReleaseQueue.front(); blockReleaseQueue.pop();
+                for (int d = 0; d < 6; d++) {
+                    int nx = node.x + dirs[d][0], ny = node.y + dirs[d][1], nz = node.z + dirs[d][2];
+                    if (ny < 0 || ny >= 256) continue;
+                    uint8_t nVal = GetLightAt(nx, ny, nz);
+                    uint8_t nBlock = nVal & 0x0F;
+                    if (nBlock != 0 && nBlock == node.val - 1) {
+                        blockReleaseQueue.push({ nx, ny, nz, nBlock });
+                        SetLightAt(nx, ny, nz, nVal & 0xF0);
+                    }
+                    else if (nBlock >= node.val) blockAddQueue.push({ nx, ny, nz });
+                }
+            }
+
+            // 2. é˜³å…‰é»‘æš—æ‰©æ•£ï¼ˆè½°ï¼ï¼ï¼é¡ºç€æ‚¬ç©ºæ–¹å—æ­£ä¸‹æ–¹ï¼Œä¸€è·¯æŠŠé˜³å…‰æŸ±æ— æƒ…åå™¬ï¼ï¼‰
+            while (!sunReleaseQueue.empty()) {
+                auto node = sunReleaseQueue.front(); sunReleaseQueue.pop();
+                for (int d = 0; d < 6; d++) {
+                    int nx = node.x + dirs[d][0], ny = node.y + dirs[d][1], nz = node.z + dirs[d][2];
+                    if (ny < 0 || ny >= 256) continue;
+
+                    uint8_t nVal = GetLightAt(nx, ny, nz);
+                    uint8_t nSun = (nVal >> 4) & 0x0F;
+
+                    // é˜³å…‰å‘ä¸‹ä¼ æ’­ï¼ˆd == 4ï¼‰ä¸”å½“æ—¶æ˜¯ç›´å°„ï¼ˆ15ç‚¹ï¼‰æ—¶ï¼Œä¸‹ä¸€æ ¼ä¹Ÿæ˜¯15ç‚¹ï¼
+                    uint8_t expectedSun = (d == 4 && node.val == 15) ? 15 : (node.val - 1);
+                    if (node.val == 15 && d == 4) expectedSun = 15;
+
+                    if (nSun != 0 && nSun == expectedSun) {
+                        sunReleaseQueue.push({ nx, ny, nz, nSun });
+                        SetLightAt(nx, ny, nz, nVal & 0x0F); // æŠ¹é™¤é‚»å±…çš„é˜³å…‰
+                        SafePushMeshQueue({ nx >> 4, nz >> 4 });
+                    }
+                    else if (nSun >= expectedSun) {
+                        sunAddQueue.push({ nx, ny, nz });
+                    }
+                }
+            }
+        }
+
+        // æƒ…å†µ Cï¼šå•çº¯æŒ–å¼€äº†ä¸€ä¸ªåŸç”Ÿçš„éå…‰æºæ–¹å—ï¼ˆç©ºæ°”å€’çŒï¼‰
+        if (IsTransparent(currentType) && currentType != BlockType::GLOWSTONE) {
+            bool isSkyVisible = true;
+            for (int ty = 255; ty > gy; ty--) {
+                if (!IsTransparent(GetBlockAt(glm::vec3(gx, ty, gz)))) { isSkyVisible = false; break; }
+            }
+            if (isSkyVisible) {
+                uint8_t curVal = GetLightAt(gx, gy, gz);
+                SetLightAt(gx, gy, gz, (curVal & 0x0F) | (15 << 4));
+                sunAddQueue.push({ gx, gy, gz });
+                for (int dy = gy - 1; dy >= 0; dy--) {
+                    if (!IsTransparent(GetBlockAt(glm::vec3(gx, dy, gz)))) break;
+                    uint8_t downVal = GetLightAt(gx, dy, gz);
+                    SetLightAt(gx, dy, gz, (downVal & 0x0F) | (15 << 4));
+                    sunAddQueue.push({ gx, dy, gz });
+                }
+            }
+            for (int d = 0; d < 6; d++) {
+                int nx = gx + dirs[d][0], ny = gy + dirs[d][1], nz = gz + dirs[d][2];
+                if (ny < 0 || ny >= 256) continue;
+                uint8_t nVal = GetLightAt(nx, ny, nz);
+                if ((nVal & 0x0F) > 0) blockAddQueue.push({ nx, ny, nz });
+                if (((nVal >> 4) & 0x0F) > 0) sunAddQueue.push({ nx, ny, nz });
+            }
+        }
+
+        // ====================================================
+        // ã€ç¬¬äºŒé˜¶æ®µï¼šåœ£å…‰å¤ç‡ƒæ³•é˜µ â€”â€” é‡æ–°ç…§äº®æœªå—æ³¢åŠçš„é˜´å½±ã€‘
+        // ====================================================
+        while (!blockAddQueue.empty()) {
+            auto node = blockAddQueue.front(); blockAddQueue.pop();
+            uint8_t currentBlock = GetLightAt(node.x, node.y, node.z) & 0x0F;
+            for (int d = 0; d < 6; d++) {
+                int nx = node.x + dirs[d][0], ny = node.y + dirs[d][1], nz = node.z + dirs[d][2];
+                if (ny < 0 || ny >= 256) continue;
+                if (!IsTransparent(GetBlockAt(glm::vec3(nx, ny, nz)))) continue;
+                uint8_t nVal = GetLightAt(nx, ny, nz);
+                uint8_t nBlock = nVal & 0x0F;
+                if (currentBlock > 1 && nBlock < currentBlock - 1) {
+                    SetLightAt(nx, ny, nz, (nVal & 0xF0) | (currentBlock - 1));
+                    blockAddQueue.push({ nx, ny, nz });
+                    SafePushMeshQueue({ nx >> 4, nz >> 4 });
+                }
+            }
+        }
+
+        while (!sunAddQueue.empty()) {
+            auto node = sunAddQueue.front(); sunAddQueue.pop();
+            uint8_t currentSun = (GetLightAt(node.x, node.y, node.z) >> 4) & 0x0F;
+            for (int d = 0; d < 6; d++) {
+                int nx = node.x + dirs[d][0], ny = node.y + dirs[d][1], nz = node.z + dirs[d][2];
+                if (ny < 0 || ny >= 256) continue;
+                if (!IsTransparent(GetBlockAt(glm::vec3(nx, ny, nz)))) continue;
+                uint8_t nVal = GetLightAt(nx, ny, nz);
+                uint8_t nSun = (nVal >> 4) & 0x0F;
+                uint8_t nextSun = (d == 4 && currentSun == 15) ? 15 : (currentSun - 1);
+                if (currentSun > 0 && nSun < nextSun) {
+                    SetLightAt(nx, ny, nz, (nVal & 0x0F) | (nextSun << 4));
+                    sunAddQueue.push({ nx, ny, nz });
+                    SafePushMeshQueue({ nx >> 4, nz >> 4 });
+                }
+            }
+        }
+    }
+
+    void InitLightForSingleChunk(const ChunkPos& pos) {
+        auto it = chunks.find(pos);
+        if (it == chunks.end()) return;
+
+        std::queue<LightNode> localSunQueue;
+
+        // ä»æ–°åŒºå—çš„ Y=255 å‘ä¸‹è¿›è¡Œé˜³å…‰ç›´å°„çš®è‚¤æ³¼æ´’
+        for (int x = 0; x < 16; x++) {
+            for (int z = 0; z < 16; z++) {
+                int gx = pos.x * 16 + x;
+                int gz = pos.z * 16 + z;
+                for (int y = 255; y >= 0; y--) {
+                    BlockType type = it->second->blocks[it->second->getIndex(x, y, z)];
+                    if (IsTransparent(type)) {
+                        // ç›´å°„é˜³å…‰å……æ»¡é«˜4ä½
+                        it->second->light[it->second->getIndex(x, y, z)] = 15 << 4;
+                        localSunQueue.push({ gx, y, gz });
+                    }
+                    else {
+                        break; // è¢«ä¸é€æ˜æ–¹å—ï¼ˆåœ°è¡¨è‰åœ°ï¼‰æŒ¡ä½äº†ï¼Œä¸­æ­¢ç›´å°„
+                    }
+                }
+            }
+        }
     }
 
 private:
@@ -294,36 +698,36 @@ private:
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
 
-                // 1. ÃÎ×Ó×îµÃÒâµÄÊıÑ§´óÒ»Í³£ºËã³öÔÚÕû¸öºê´óÓîÖæÖĞµÄ¡¾¾ø¶ÔÈ«¾Ö×ø±ê¡¿£¡
+                // 1. æ¢¦å­æœ€å¾—æ„çš„æ•°å­¦å¤§ä¸€ç»Ÿï¼šç®—å‡ºåœ¨æ•´ä¸ªå®å¤§å®‡å®™ä¸­çš„ã€ç»å¯¹å…¨å±€åæ ‡ã€‘ï¼
                 float worldX = static_cast<float>(chunkX * 16 + x);
                 float worldZ = static_cast<float>(chunkZ * 16 + z);
 
-                // 2. ºô»½Äã¸Õ²ÅÊÖËºµÄ TerrainNoise °ØÁÖÔëÉù·¨Õó£¡
-                // ÆµÂÊ 0.025f ÈÃÉ½ÂÍÁ¬ÃàÆğ·ü£¬³ËÒÔ 25.0f ´ú±íÉÏÏÂ²¨¶¯µÄÉ½·å·ù¶È
+                // 2. å‘¼å”¤ä½ åˆšæ‰æ‰‹æ’•çš„ TerrainNoise æŸæ—å™ªå£°æ³•é˜µï¼
+                // é¢‘ç‡ 0.025f è®©å±±å³¦è¿ç»µèµ·ä¼ï¼Œä¹˜ä»¥ 25.0f ä»£è¡¨ä¸Šä¸‹æ³¢åŠ¨çš„å±±å³°å¹…åº¦
                 float noiseBase = TerrainNoise::GetPerlin(worldX * 0.025f, worldZ * 0.025f) * 25.0f;
-                // µş¼ÓÒ»²ã¾«ÖÂµÄ±íÃæĞ¡Æğ·ü
+                // å åŠ ä¸€å±‚ç²¾è‡´çš„è¡¨é¢å°èµ·ä¼
                 float noiseDetail = TerrainNoise::GetPerlin(worldX * 0.1f, worldZ * 0.1f) * 4.0f;
 
-                // 3. ÔÚÄã¸ß¹óµÄ 256 ²ã¸ß¶ÈÊÀ½çÀï£¬µş¼ÓÉÏÒ»¸ö±ê×¼º£Æ½Ãæ£¨±ÈÈç»ù´¡ 40 ²ã¸ß¶È£©
+                // 3. åœ¨ä½ é«˜è´µçš„ 256 å±‚é«˜åº¦ä¸–ç•Œé‡Œï¼Œå åŠ ä¸Šä¸€ä¸ªæ ‡å‡†æµ·å¹³é¢ï¼ˆæ¯”å¦‚åŸºç¡€ 40 å±‚é«˜åº¦ï¼‰
                 int surfaceHeight = static_cast<int>(40.0f + noiseBase + noiseDetail);
 
-                // ¿ÛÉÏ°²È«´ó»¤¶Ü£¬¾ø¶Ô²»×¼³¬³ö 256 ²ãµÄÌì»¨°å»ò³ÁÈëĞé¿Õ£¬ºßßó£¡
+                // æ‰£ä¸Šå®‰å…¨å¤§æŠ¤ç›¾ï¼Œç»å¯¹ä¸å‡†è¶…å‡º 256 å±‚çš„å¤©èŠ±æ¿æˆ–æ²‰å…¥è™šç©ºï¼Œå“¼å”§ï¼
                 if (surfaceHeight < 1) surfaceHeight = 1;
                 if (surfaceHeight >= 256) surfaceHeight = 255;
 
-                // 4. ºä£¡£¡£¡´Ó y=0 Ò»Â·ÏòÉÏÂëÆğÉú»ú²ª²ªµÄÈı²ã²ÄÖÊÆ¤·ô£¡
+                // 4. è½°ï¼ï¼ï¼ä» y=0 ä¸€è·¯å‘ä¸Šç èµ·ç”Ÿæœºå‹ƒå‹ƒçš„ä¸‰å±‚æè´¨çš®è‚¤ï¼
                 for (int y = 0; y < 256; y++) {
                     if (y > surfaceHeight) {
-                        c->SetBlock(x, y, z, BlockType::AIR); // Ìì¿Õ»®¹é¿ÕÆø
+                        c->SetBlock(x, y, z, BlockType::AIR); // å¤©ç©ºåˆ’å½’ç©ºæ°”
                     }
                     else if (y == surfaceHeight) {
-                        c->SetBlock(x, y, z, BlockType::GRASS); // ±íÃæÆÌÂú²İÆ¤
+                        c->SetBlock(x, y, z, BlockType::GRASS); // è¡¨é¢é“ºæ»¡è‰çš®
                     }
                     else if (y >= surfaceHeight - 3) {
-                        c->SetBlock(x, y, z, BlockType::DIRT);  // µØÏÂÈı²ã¹àÂúÄàÍÁ
+                        c->SetBlock(x, y, z, BlockType::DIRT);  // åœ°ä¸‹ä¸‰å±‚çŒæ»¡æ³¥åœŸ
                     }
                     else {
-                        c->SetBlock(x, y, z, BlockType::STONE); // µØĞÄÉî´¦ÖıÔì¼áÊ¯
+                        c->SetBlock(x, y, z, BlockType::STONE); // åœ°å¿ƒæ·±å¤„é“¸é€ åšçŸ³
                     }
                 }
             }

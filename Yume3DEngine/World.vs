@@ -1,11 +1,12 @@
 #version 330 core
 
-// ÃÎ×Ó×¢Òâ£ºLocation 2-6 ÍêÃÀ¹Ò½ÓÄã Chunk::Render ÀïµÄÊµÀı»¯Í¨µÀ£¡
+// æ¢¦å­æ³¨æ„ï¼šLocation 2-7 å®Œç¾æŒ‚æ¥å®ä¾‹åŒ–é€šé“ï¼
 layout(location = 2) in vec3 meshOrigin;   
 layout(location = 3) in vec2 meshSize;
 layout(location = 4) in float blockID;     
 layout(location = 5) in float faceID;
 layout(location = 6) in vec4 aoCorners;
+layout(location = 7) in float faceLight;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -14,20 +15,37 @@ uniform mat4 projection;
 out vec2 BlockUV;
 flat out float TexIndex; 
 out float InterpolatedAO;
+out float InterpolatedLight;
+
+// ã€é­”æ³•ä¿®å¤ 1ã€‘æŠŠæ²‰é‡çš„æŸ¥æ‰¾è¡¨æ— æƒ…è¸¢å‡º main å‡½æ•°ï¼Œå¹¶ç”¨ const é”æ­»åœ¨æ˜¾å¡åªè¯»é­”åŠ›æ± ä¸­ï¼
+const int atlasLUT[36] = int[](
+    1, 1, 1, 1, 2, 0, 
+    2, 2, 2, 2, 2, 2, 
+    3, 3, 3, 3, 3, 3, 
+    5, 6, 5, 6, 4, 7, 
+    8, 8, 8, 8, 8, 8, 
+    3, 3, 3, 3, 3, 3  
+);
+
+// 6 é¡¶ç‚¹æŸ¥æ‰¾è¡¨ä¹Ÿç¨³ç¨³å®‰ç½®åœ¨å¤–é¢
+const int lookup[6] = int[](0, 2, 1, 0, 3, 2);
 
 void main() {
     int face = int(faceID);
     int triVert = gl_VertexID % 6;
-    
-    // ÃÎ×ÓÉñÀ´Ö®±ÊµÄ 6 ¶¥µã²éÕÒ±í£¬±¾Ğ¡½ã°ïÄã¼ÓÉÏ const ÈÃÓ²¼ş·è¿ñ¼ÓËÙ£¡
-    const int lookup[6] = int[](0, 2, 1, 0, 3, 2);
     int corner = lookup[triVert];
 
-    // Ó²¼şË«ÏßĞÔ²åÖµÍêÃÀ·Ö·¢
+    // ã€é­”æ³•ä¿®å¤ 2ã€‘ç¡¬ä»¶åŒçº¿æ€§æ’å€¼
     if(corner == 0)      InterpolatedAO = aoCorners.x;
     else if(corner == 1) InterpolatedAO = aoCorners.y;
     else if(corner == 2) InterpolatedAO = aoCorners.z;
     else if(corner == 3) InterpolatedAO = aoCorners.w;
+
+    // ã€èµ„æ·±æ—…è¡Œå®¶çš„ç”»è´¨ç§˜ç±ã€‘
+    // æ¢¦å­ï¼Œå¦‚æœä»¥åä½ å‘ç°æ‹‰é•¿çš„å¤§è¡¨é¢å¯¹è§’çº¿é˜´å½±åˆ‡ç—•å¾ˆä¸‘ï¼Œæœ¬å°å§å…è®¸ä½ ä»¥ååœ¨ç‰‡å…ƒç€è‰²å™¨ï¼ˆFragment Shaderï¼‰é‡Œ
+    // ç”¨é‡å¿ƒåæ ‡æˆ–è€… UV æ¯”ä¾‹æ¥æ‰‹å·¥åšéçº¿æ€§ AO æ··åˆï¼Œä½†åœ¨è¿™é‡Œæˆ‘ä»¬å…ˆç”¨å¸¸é‡åŒ–è®©å®ƒå¿«åˆ°é£èµ·ï¼Œå“¼å”§ï¼
+    
+    InterpolatedLight = faceLight;
 
     float u = float((corner == 1) || (corner == 2));
     float v = float((corner == 2) || (corner == 3));
@@ -36,25 +54,16 @@ void main() {
     float sy = meshSize.y;
     BlockUV = vec2(u * sx, v * sy);
 
-    //  À©Õ¹ LUT Ä§·¨Õó£ºÎªÒÔºóÄãÄÇÁ½¸öÔÂĞÄÑªÀ´³±×öµÄÊÕÒô»úºÍÌğÌğÈ¦ÁôÏÂ¿ÕÎ»£¡
-    // ¼ÙÉèÒÔºóÓĞ¸ü¶à·½¿é£¬ÎÒÃÇ½«ÉÏÏŞ¶¯Ì¬½â¿ª£¬»òÕßÔÚÕâÀï×öºÃ°²È«·ÀÓù
-    int atlasLUT[30] = int[](
-        1, 1, 1, 1, 2, 0, // ²İ·½¿é (¶¥Äàµ×)
-        2, 2, 2, 2, 2, 2, // ÄàÍÁ
-        3, 3, 3, 3, 3, 3, // Ê¯Í·
-        5, 6, 5, 6, 4, 7, //Ä¾Í·
-        8, 8, 8, 8, 8, 8  //Ê÷Ò¶
-    );
-    int bIndex = clamp(int(blockID) - 1, 0, 5); // ÒÔºóÕâÀï¿ÉÒÔËæĞÄËùÓûÀ©Õ¹Å¶
+    // ç»å¯¹å®‰å…¨çš„æŸ¥è¡¨ç´¢å¼•è®¡ç®—
+    int bIndex = clamp(int(blockID) - 1, 0, 5);
     int lutIndex = bIndex * 6 + face;
-    if (lutIndex < 0 || lutIndex >= 30) {
+    if (lutIndex < 0 || lutIndex >= 36) {
         lutIndex = 12; 
     }
 
-    // ºä£¡£¡£¡³äÂúÉñÊ¥°²È«¸ĞµÄ TexIndex ÍêÃÀµ®Éú£¡
     TexIndex = float(atlasLUT[lutIndex]);
 
-    // 3D ÊµÀı»¯¿Õ¼ä×ø±ê¹¹½¨
+    // 3D å®ä¾‹åŒ–ç©ºé—´åæ ‡æ„å»º
     vec3 localPos = vec3(0.0);
     if (face == 0) localPos = vec3( u * sx,          v * sy, 0.0);
     if (face == 1) localPos = vec3((1.0 - u) * sx,   v * sy, 1.0);

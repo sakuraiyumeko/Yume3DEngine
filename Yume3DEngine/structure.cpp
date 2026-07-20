@@ -22,32 +22,39 @@ void Structure::SetGlobalBlockSafe(World* world, int gx, int gy, int gz, BlockTy
 void Structure::GenerateTree(World* world, int rootX, int rootY, int rootZ) {
     if (!world) return;
 
-    // 1. 稳稳地拔地而起 4 格高的神圣树干 (4 代表 LOG)
-    for (int h = 0; h < 4; h++) {
-        SetGlobalBlockSafe(world, rootX, rootY + h, rootZ, static_cast<BlockType>(4));
+    int treeHeight = 4; // 这样以后想改成 5 格或者 6 格高，只要改这一个变量就行啦，哼唧！
+
+    // 1. 稳稳地拔地而起动态高度的树干
+    for (int h = 0; h < treeHeight; h++) {
+        // 【魔法修复 1】用优雅的枚举代替丑陋的魔法数字 4！
+        SetGlobalBlockSafe(world, rootX, rootY + h, rootZ, BlockType::LOG);
     }
 
-    // 2. 树干第 3 层周围（高度 h = 2）：画一个 5x5 的树叶厚片，掐掉四个角让它圆润 (5 代表 LEAVES)
+    // 2. 算好树叶开始长出来的基础高度（通常是树干顶端往下两格开始）
+    int leafBaseY = rootY + (treeHeight - 2);
+
+    // 树干上层周围：画一个 5x5 的树叶厚片，掐掉四个角
     for (int dx = -2; dx <= 2; dx++) {
         for (int dz = -2; dz <= 2; dz++) {
             if (std::abs(dx) == 2 && std::abs(dz) == 2) continue;
-            if (dx == 0 && dz == 0) continue;
-            SetGlobalBlockSafe(world, rootX + dx, rootY + 2, rootZ + dz, static_cast<BlockType>(5));
+            if (dx == 0 && dz == 0) continue; // 不覆盖树干
+            SetGlobalBlockSafe(world, rootX + dx, leafBaseY, rootZ + dz, BlockType::LEAVES);
         }
     }
 
-    // 3. 树干第 4 层周围（高度 h = 3）：画一个 3x3 的树叶薄片
+    // 3. 树干最顶层周围：画一个 3x3 的树叶薄片
     for (int dx = -1; dx <= 1; dx++) {
         for (int dz = -1; dz <= 1; dz++) {
-            if (dx == 0 && dz == 0) continue;
-            SetGlobalBlockSafe(world, rootX + dx, rootY + 3, rootZ + dz, static_cast<BlockType>(5));
+            if (dx == 0 && dz == 0) continue; // 不覆盖顶层树干
+            SetGlobalBlockSafe(world, rootX + dx, leafBaseY + 1, rootZ + dz, BlockType::LEAVES);
         }
     }
 
-    // 4. 在树干最顶端（高度 h = 4）盖上最后的十字小树顶 
-    SetGlobalBlockSafe(world, rootX, rootY + 4, rootZ, static_cast<BlockType>(5));
-    SetGlobalBlockSafe(world, rootX + 1, rootY + 4, rootZ, static_cast<BlockType>(5));
-    SetGlobalBlockSafe(world, rootX - 1, rootY + 4, rootZ, static_cast<BlockType>(5));
-    SetGlobalBlockSafe(world, rootX, rootY + 4, rootZ + 1, static_cast<BlockType>(5));
-    SetGlobalBlockSafe(world, rootX, rootY + 4, rootZ - 1, static_cast<BlockType>(5));
+    // 4. 在树干最顶端的更上一格，盖上最后的十字小树顶
+    int topY = rootY + treeHeight;
+    SetGlobalBlockSafe(world, rootX, topY, rootZ, BlockType::LEAVES);
+    SetGlobalBlockSafe(world, rootX + 1, topY, rootZ, BlockType::LEAVES);
+    SetGlobalBlockSafe(world, rootX - 1, topY, rootZ, BlockType::LEAVES);
+    SetGlobalBlockSafe(world, rootX, topY, rootZ + 1, BlockType::LEAVES);
+    SetGlobalBlockSafe(world, rootX, topY, rootZ - 1, BlockType::LEAVES);
 }
